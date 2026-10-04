@@ -1298,7 +1298,6 @@
             } catch(e) { console.error("Failed to fetch available stocks:", e); }
         }
 
-        // --- FETCH WATCHLIST IN CHUNKS (PREVENTS 414 ERROR AND FREEZES) ---
         async function fetchWlData(specificSymbols = null) {
             try {
                 const res = await fetch('api/watchlist_summary.json?v=' + cacheVersion);
@@ -1331,8 +1330,7 @@
                 }
             } catch(e) { console.error("fetchWlData error:", e); }
         }
-        
-        // --- LIVE SYNC PROGRESS COUNTER ---
+
         async function syncAllStocks() {
             alert("Syncing is handled automatically by GitHub Actions every weekday at 4:00 PM IST.");
         }
