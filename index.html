@@ -160,8 +160,9 @@
         /* FIX: Removed the muddy shadow for grey backgrounds */
         body:not([data-theme="light"]) .pane-header span { text-shadow: none; }
         
-        .pane-controls { display: flex; opacity: 1; pointer-events: auto; gap: 4px; margin-left: 6px; }
-        
+        .pane-controls { display: flex; opacity: 0; pointer-events: none; transition: opacity 0.2s; gap: 4px; margin-left: 6px; }
+        .pane-title:hover .pane-controls, .pane-title:active .pane-controls { opacity: 1; pointer-events: auto; }
+
         .pane-btn { background: transparent; border: none; color: #434651; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
         .pane-btn:hover { background: rgba(0,0,0,0.1); color: #131722; }
         .pane-btn.close:hover { background: #f23645; color: #ffffff; }
