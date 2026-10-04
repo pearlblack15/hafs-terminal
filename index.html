@@ -1,0 +1,3313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#080808">
+    <title>Hafs Terminal</title>
+    
+    <!-- Custom Pro Terminal Candlestick Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23131722'/><rect x='33' y='25' width='4' height='55' rx='2' fill='%23f23645'/><rect x='25' y='40' width='20' height='30' rx='4' fill='%23f23645'/><rect x='63' y='15' width='4' height='60' rx='2' fill='%23089981'/><rect x='55' y='25' width='20' height='35' rx='4' fill='%23089981'/></svg>">
+    
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        @keyframes flashGreen {
+        0% { background-color: rgba(8, 153, 129, 0.6); }
+        100% { background-color: transparent; }
+        }
+        .flash-success {
+        animation: flashGreen 0.5s ease-out;
+        }
+        :root {
+            /* Pure Neutral Dark Theme (No Navy/Blue Tint) */
+            --ui-bg-main: #080808; 
+            --ui-bg-panel: #121212; 
+            --ui-border: #242424;
+            --ui-text: #d1d4dc;
+            --ui-text-muted: #787b86;
+            --ui-hover: #2a2a2a;
+            --ui-active-bg: #1e1e1e; /* SOLID hex color fixes scroll ghosting and muddy tint */
+            --ui-input-bg: #000000;
+            --ui-dash-bg: rgba(18, 18, 18, 0.85);
+        }
+
+        [data-theme="light"] {
+            /* Clean Light Theme */
+            --ui-bg-main: #ffffff;
+            --ui-bg-panel: #f8f9fa;
+            --ui-border: #e0e3eb;
+            --ui-text: #131722;
+            --ui-text-muted: #434651;
+            --ui-hover: #d0d4da;
+            --ui-active-bg: #eef0f4; /* SOLID hex color fixes scroll ghosting */
+            --ui-input-bg: #ffffff;
+            --ui-dash-bg: rgba(255, 255, 255, 0.85);
+        }
+
+        /* --- FIX 6: Lock page bounds so virtual keyboard doesn't push the bottom off-screen --- */
+    html, body { 
+        margin: 0; 
+        padding: 0; 
+        background-color: var(--ui-bg-main); 
+        color: var(--ui-text); 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+        font-variant-numeric: tabular-nums; 
+        display: flex; 
+        width: 100%;
+        height: 100%; 
+        height: 100dvh; 
+        overflow: hidden; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        box-sizing: border-box; 
+    }
+        
+        .modal { 
+        display: none; 
+        position: fixed; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%); 
+        background: var(--ui-bg-panel); 
+        border: 1px solid var(--ui-border); 
+        padding: 16px 20px; 
+        border-radius: 8px; 
+        z-index: 1200; /* Higher than watchlist (100) */
+        min-width: 280px; 
+        max-width: 90vw; 
+        max-height: 85vh; 
+        max-height: 85dvh; 
+        overflow-y: auto; /* Makes settings scrollable on short landscape screens */
+        box-sizing: border-box;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.6); 
+    }
+        .modal h3 { margin-top: 0; color: var(--ui-text); border-bottom: 1px solid var(--ui-border); padding-bottom: 10px; }
+        .modal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; }
+        .modal-row input[type="color"] { background: none; border: none; cursor: pointer; height: 25px; width: 40px; padding: 0; }
+        .modal-row select { background: var(--ui-input-bg); color: var(--ui-text); border: 1px solid var(--ui-border); padding: 4px; border-radius: 3px; font-size: 12px; cursor: pointer; }
+        .modal-btn { background: #2962ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; }
+        .modal-btn.reset { background: transparent; border: 1px solid #f23645; color: #f23645; }
+        #modal-overlay { 
+        display: none; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0,0,0,0.6); 
+        z-index: 1100; /* Sits above workspace & watchlist, below modal */
+    }
+
+        #toolbar-wrapper { display: flex; border-right: 1px solid var(--ui-border); z-index: 10; background: var(--ui-bg-panel); }
+        #toolbar { width: 38px; display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 8px; transition: width 0.2s; overflow: hidden; }
+        .t-btn { background: transparent; border: 1px solid transparent; color: var(--ui-text); border-radius: 4px; cursor: pointer; font-size: 15px; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; }
+        .t-btn.active { border-color: #2962ff; background: var(--ui-active-bg); color: #2962ff; }
+        #toolbar-toggle { background: var(--ui-border); border: none; color: var(--ui-text-muted); cursor: pointer; width: 6px; font-size: 6px; padding: 0; transition: background 0.2s, color 0.2s; }
+        #toolbar-toggle:hover { background: #2962ff; color: #ffffff; }
+
+        #main-workspace { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+        #top-bar { height: 35px; background-color: var(--ui-bg-panel); border-bottom: 1px solid var(--ui-border); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; gap: 10px; flex-shrink: 0; }
+        
+        .nav-grp { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 15px; color: var(--ui-text); }
+        .nav-btn, .tf-btn { background: transparent; border: 1px solid var(--ui-border); color: var(--ui-text); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+        .tf-btn.active { background: #2962ff; color: white; border-color: #2962ff; }
+        
+        #top-search { background: var(--ui-input-bg); border: 1px solid var(--ui-border); color: var(--ui-text); padding: 6px 10px; font-size: 13px; border-radius: 4px; width: 150px; outline: none; }
+        #top-search:focus { border-color: #2962ff; }
+
+        #chart-container { flex: 1 1 0; min-height: 0; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+        #tv-chart { flex-grow: 1; outline: none; }
+        
+        #bottom-bar { height: 30px; background-color: var(--ui-bg-main); border-top: 1px solid var(--ui-border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .range-btn { background: none; border: none; color: var(--ui-text-muted); font-size: 12px; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
+        .range-btn:hover { color: var(--ui-text); background: var(--ui-hover); }
+        .range-btn.active { color: #2962ff; font-weight: bold; }
+        
+        #chart-title-box { position: absolute; top: 12px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+        #company-name { font-size: 16px; font-weight: 800; font-family: 'Inter', sans-serif; letter-spacing: 0.5px; }
+        .eye-btn { pointer-events: auto; background: transparent; border: none; color: var(--ui-text-muted); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
+        .eye-btn:hover { background: var(--ui-hover); color: var(--ui-text); }
+        .eye-btn.hidden-mode { opacity: 0.3; filter: grayscale(100%); }
+        /* --- Dynamic Pane Headers (Hover to Close) --- */
+        .pane-header { 
+            position: absolute; 
+            top: 6px; 
+            left: 12px; 
+            z-index: 20; 
+            font-size: 12px; 
+            font-family: monospace; 
+            pointer-events: none; 
+            display: flex; 
+            align-items: center; 
+        }
+        .pane-title { 
+            pointer-events: auto; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            background: transparent; 
+            color: inherit; 
+            padding: 2px 0; 
+        }
+        /* FIX: Removed the muddy shadow for grey backgrounds */
+        body:not([data-theme="light"]) .pane-header span { text-shadow: none; }
+        
+        .pane-controls { display: flex; opacity: 0; pointer-events: none; transition: opacity 0.2s; gap: 4px; margin-left: 6px; }
+        .pane-title:hover .pane-controls { opacity: 1; pointer-events: auto; }
+        
+        .pane-btn { background: transparent; border: none; color: #434651; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
+        .pane-btn:hover { background: rgba(0,0,0,0.1); color: #131722; }
+        .pane-btn.close:hover { background: #f23645; color: #ffffff; }
+
+        #ohlc-legend { 
+            position: absolute; 
+            top: 34px; 
+            left: 12px; 
+            z-index: 20; 
+            font-size: 12px; 
+            font-family: monospace; 
+            display: flex; 
+            gap: 8px; 
+            background: transparent; 
+            border: none; 
+            padding: 2px 0; 
+            pointer-events: none; 
+            max-width: calc(100% - 24px); 
+            overflow: hidden; 
+            white-space: nowrap; 
+            color: var(--ui-text); 
+        }
+       /* FIX: Removed the muddy shadow for grey backgrounds */
+        body:not([data-theme="light"]) #ohlc-legend span { text-shadow: none; }
+        .ohlc-val { font-weight: bold; }
+        
+        #dashboard { 
+            position: absolute; 
+            bottom: 15px; /* Snaps it back to the bottom sub-pane */
+            left: 15px; 
+            background: var(--ui-dash-bg); 
+            border: 1px solid var(--ui-border); 
+            padding: 8px 12px; 
+            border-radius: 4px; 
+            z-index: 25; 
+            font-size: 11px; 
+            pointer-events: none; 
+            transition: transform 0.2s; 
+            transform-origin: bottom left; 
+            min-width: 110px; 
+            color: var(--ui-text);
+        }
+        .dash-row { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 4px; }
+        .dash-row:last-child { margin-bottom: 0; }
+        :root {
+            --dash-val-col: #ffffff; /* Pure white for values in Dark Mode */
+            --dash-lbl-col: #a3a6af; /* Brighter grey for labels in Dark Mode */
+        }
+        [data-theme="light"] {
+            --dash-val-col: #000000;
+            --dash-lbl-col: #434651;
+        }
+        .dash-label { color: var(--dash-lbl-col); font-weight: 800; letter-spacing: 0.5px; }
+        .dash-val { font-weight: 900; text-align: right; color: var(--dash-val-col); letter-spacing: 0.5px; }
+        
+        /* Adds a crisp, hard shadow to ALL dashboard text in Dark Mode */
+        body:not([data-theme="light"]) .dash-label,
+        body:not([data-theme="light"]) .dash-val {
+            text-shadow: 0px 1px 4px rgba(0, 0, 0, 1.0);
+        }
+
+        .axis-btn { background: var(--ui-border); border: 1px solid var(--ui-border); color: var(--ui-text); padding: 0; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
+        .axis-btn:hover { background: var(--ui-hover); color: var(--ui-text); }
+        .axis-btn.active { color: #ffffff; background: #2962ff; border-color: #2962ff; }
+
+        #btn-reset { 
+            position: absolute; 
+            bottom: 45px; /* Dropped slightly closer to the axis */
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: var(--ui-bg-panel); 
+            color: var(--ui-text); 
+            border: 1px solid var(--ui-border); 
+            width: 30px;  /* Shrunk from 40px */
+            height: 30px; /* Shrunk from 40px */
+            border-radius: 50%; 
+            font-size: 16px; /* Shrunk icon size */
+            cursor: pointer; 
+            z-index: 20; 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        #btn-reset:hover { 
+            background: #2962ff; 
+            color: #ffffff; 
+            border-color: #2962ff; 
+            transform: translateX(-50%) scale(1.1);
+        }
+
+        #resizer { width: 5px; background: var(--ui-border); cursor: col-resize; flex-shrink: 0; z-index: 15; }
+        #resizer:hover { background: #2962ff; }
+        
+        /* Restored to 320px wide so symbols are fully readable */
+        /* Tightened overall width to 260px to maximize chart canvas area */
+        #watchlist { width: 260px; background-color: var(--ui-bg-panel); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+        .wl-header { padding: 10px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--ui-border); }
+        .wl-list-mgr { display: flex; justify-content: space-between; align-items: center; }
+        #list-selector { flex-grow: 1; background: var(--ui-input-bg); color: var(--ui-text); border: 1px solid var(--ui-border); padding: 4px; border-radius: 3px; font-size: 12px; outline: none; margin-right: 5px; cursor: pointer;}
+        .wl-btn { background: var(--ui-border); border: none; color: var(--ui-text); padding: 4px 8px; cursor: pointer; border-radius: 3px; }
+        .wl-btn:hover { background: var(--ui-hover); }
+        
+        #wl-list { flex-grow: 1; overflow: auto; position: relative; }
+        
+        /* FIX: Enforced strict row heights so sticky background walls cover 100% of the vertical space */
+        .wl-cols { display: flex; font-size: 11px; color: var(--ui-text-muted); border-bottom: 1px solid var(--ui-border); background: var(--ui-bg-panel); min-width: max-content; position: sticky; top: 0; z-index: 10; height: 24px; line-height: 24px; align-items: stretch; }
+        .wl-item { cursor: pointer; display: flex; align-items: stretch; border-bottom: 1px solid var(--ui-border); border-left: 3px solid transparent; font-size: 12px; min-width: max-content; background: var(--ui-bg-panel); transition: background 0.1s; height: 28px; line-height: 28px; scroll-margin-top: 26px; }
+        .wl-item.active { background: var(--ui-active-bg); border-left: 3px solid #2962ff; }
+        .wl-item:hover { background: var(--ui-hover); }
+
+        /* The Sticky Horizontal Scroll Matrix */
+        .item-color, .col-color { flex: 0 0 20px; position: sticky; left: 0; background: inherit; display: flex; align-items: center; justify-content: center; z-index: 2; }
+        .item-sym, .col-sym { flex: 0 0 70px; position: sticky; left: 20px; background: inherit; padding-left: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 11.5px; letter-spacing: 0.3px; cursor: pointer; user-select: none; z-index: 2; display: block; }
+        .item-cmp, .col-cmp { flex: 0 0 50px; position: sticky; left: 90px; background: inherit; text-align: right; padding-right: 6px; border-right: 1px solid var(--ui-border); cursor: pointer; user-select: none; font-variant-numeric: tabular-nums; z-index: 2; display: block; }
+        
+        /* Ensure headers stay strictly above items when scrolling down */
+        .col-color, .col-sym, .col-cmp { z-index: 12 !important; background: var(--ui-bg-panel); }
+
+        /* The Scrollable Analytics Right Side */
+        .col-chg, .item-chg { flex: 0 0 58px; text-align: right; cursor: pointer; user-select: none; padding-right: 4px; font-variant-numeric: tabular-nums; display: block; }
+        .col-tag, .item-flags { flex: 0 0 30px; text-align: center; cursor: pointer; user-select: none; display: flex; justify-content: center; align-items: center; }
+        .col-bp, .item-bp { flex: 0 0 35px; text-align: right; cursor: pointer; user-select: none; padding-right: 8px; font-variant-numeric: tabular-nums; display: block; }
+        .col-rvol, .item-rvol { flex: 0 0 45px; text-align: right; cursor: pointer; user-select: none; padding-right: 8px; font-variant-numeric: tabular-nums; display: block; }
+        .col-ud, .item-ud { flex: 0 0 40px; text-align: right; cursor: pointer; user-select: none; padding-right: 8px; font-variant-numeric: tabular-nums; display: block; }
+
+        /* Badges & Tags */
+        .sig-badge { font-size: 10px; font-weight: bold; padding: 0; border-radius: 3px; color: #fff; display: flex; align-items: center; justify-content: center; width: 15px; height: 15px; cursor: pointer;}
+        .color-tag { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ui-text-muted); cursor: pointer; flex-shrink: 0;}
+        .tag-none { background: transparent; } .tag-red { background: #f23645; border-color: #f23645; } .tag-blue { background: #2962ff; border-color: #2962ff; } .tag-green { background: #089981; border-color: #089981; } .tag-orange { background: #ff9800; border-color: #ff9800; }
+        
+        /* The Hover-Reveal Delete Button */
+        .del-btn { color: var(--ui-text-muted); cursor: pointer; font-size: 12px; flex: 0 0 20px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; position: sticky; right: 0; background: inherit; z-index: 2; margin-left: 5px;}
+        .wl-item:hover .del-btn { opacity: 1; pointer-events: auto; }
+        .del-btn:hover { color: #f23645; }
+
+        /* Measure Ruler UI */
+        #measure-overlay { position: absolute; display: none; background: rgba(41, 98, 255, 0.1); border: 1px dashed #2962ff; pointer-events: none; z-index: 50; }
+        #measure-badge { position: absolute; background: #2962ff; color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; display: none; z-index: 51; line-height: 1.4; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        /* ---- ADD THIS AT THE BOTTOM OF YOUR CSS ---- */
+
+        /* 1. Make all scrollbars inside the watchlist ultra-thin and transparent by default */
+        #watchlist * {
+        scrollbar-width: thin;
+        scrollbar-color: transparent transparent;
+        }
+
+        #watchlist *::-webkit-scrollbar {
+        width: 4px;
+        }
+
+        #watchlist *::-webkit-scrollbar-track {
+        background: transparent;
+        }
+
+        #watchlist *::-webkit-scrollbar-thumb {
+        background: transparent;
+        border-radius: 4px;
+        }
+
+        /* 2. Only reveal the scrollbar thumb when hovering over the watchlist area */
+        #watchlist:hover * {
+            scrollbar-color: rgba(120, 120, 120, 0.45) transparent;
+        }
+
+        #watchlist:hover *::-webkit-scrollbar-thumb {
+            background: rgba(120, 120, 120, 0.45);
+        }
+
+        #watchlist *::-webkit-scrollbar-thumb:hover {
+            background: rgba(120, 120, 120, 0.75);
+        }
+
+        /* 3. Shift the close button slightly to the left so the scrollbar never overlaps it */
+        .watchlist-item {
+            padding-right: 6px; 
+        }
+        .pane-resizer { 
+            height: 5px; 
+            margin: -2px 0; 
+            background: transparent; 
+            cursor: row-resize; 
+            flex-shrink: 0; 
+            z-index: 50; 
+            position: relative; 
+        }
+
+        .pane-resizer::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 0;
+            width: 100%;
+            height: 1px; 
+            background: var(--ui-border);
+            transition: background 0.2s ease;
+        }
+
+        .pane-resizer:hover::after { 
+            background: #2962ff; 
+        }
+
+        .sub-hidden { display: none !important; }
+                /* Custom Right-Click Context Menu */
+        #wl-context-menu {
+            display: none;
+            position: fixed;
+            background: var(--ui-bg-panel);
+            border: 1px solid var(--ui-border);
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 1000;
+            min-width: 130px;
+            padding: 4px 0;
+            font-size: 12px;
+        }
+        .ctx-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            color: var(--ui-text);
+        }
+        .ctx-item:hover {
+            background: var(--ui-hover);
+            color: #2962ff;
+        }
+        .ctx-header {
+            padding: 4px 12px;
+            font-weight: bold;
+            color: var(--ui-text-muted);
+            border-bottom: 1px solid var(--ui-border);
+            margin-bottom: 4px;
+            font-size: 11px;
+        }
+        
+        /* EMA Toggle Hover Logic */
+        #btn-toggle-emas { opacity: 0; pointer-events: none; transition: opacity 0.2s; background: transparent; border: none; cursor: pointer; font-size: 14px; }
+        #title-wrapper:hover #btn-toggle-emas { pointer-events: auto; }
+        #title-wrapper:hover #btn-toggle-emas.emas-on { opacity: 0.8; }
+        #title-wrapper:hover #btn-toggle-emas.emas-off { opacity: 0.3; filter: grayscale(100%); }
+        /* --- MOBILE RESPONSIVE OVERRIDES --- */
+        @media (max-width: 800px) {
+            /* Scrollable Top and Bottom Bars */
+            #top-bar, #bottom-bar {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none; /* Firefox */
+            }
+            #top-bar::-webkit-scrollbar, #bottom-bar::-webkit-scrollbar {
+                display: none; /* Safari/Chrome */
+            }
+
+            /* Floating Watchlist Overlay */
+            #watchlist {
+                position: absolute;
+                right: 0;
+                top: 35px; 
+                bottom: 30px; 
+                width: 0px; 
+                max-width: 85%; 
+                z-index: 100;
+                box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+            }
+            
+            /* Hide desktop resizers */
+            #resizer { display: none; }
+            
+            /* Compact the dashboard to prevent screen clutter */
+            #dashboard {
+                transform: scale(0.75);
+                bottom: 40px;
+                left: 5px;
+            }
+
+            /* Ultra-compact OHLCV on mobile screens */
+            #ohlc-legend {
+                top: 32px;
+                left: 8px;
+                font-size: 9.5px;
+                gap: 5px;
+                padding: 1px 5px;
+                max-width: calc(100% - 16px);
+            }
+        }
+
+        /* --- Mobile Landscape Compaction --- */
+        @media (max-width: 950px) and (orientation: landscape) {
+            #top-bar { height: 30px; }
+            #bottom-bar { height: 26px; }
+            #dashboard { bottom: 30px; transform: scale(0.65); left: 5px; }
+            .nav-btn, .tf-btn, .range-btn { padding: 1px 4px; font-size: 11px; }
+
+            #ohlc-legend {
+                top: 29px;
+                left: 8px;
+                font-size: 8.5px;
+                gap: 4px;
+                padding: 1px 4px;
+            }
+        }
+
+        /* Compact modals when vertical space is under 520px (Landscape phone) */
+        @media (max-height: 520px) {
+            .modal { max-height: 92dvh; padding: 10px 14px; }
+            .modal h3 { margin: 0 0 6px 0; padding-bottom: 4px; font-size: 13px; }
+            .modal-row { margin-bottom: 4px; font-size: 11px; }
+            .modal-btn { padding: 5px 10px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Datalist populated on load ONLY with Watchlist items -->
+    <datalist id="watchlist-stocks"></datalist>
+
+    <div id="modal-overlay" onclick="closeSettings()"></div>
+    <div id="settings-modal" class="modal">
+        <h3>Chart Settings</h3>
+        <div class="modal-row"><span>Background Top</span><input type="color" id="s-bg-top"></div>
+        <div class="modal-row"><span>Background Bottom</span><input type="color" id="s-bg-bottom"></div>
+        <div class="modal-row"><span>Grid Lines</span><input type="color" id="s-grid"></div>
+        <div class="modal-row"><span>Text & Axis</span><input type="color" id="s-text"></div>
+        <div class="modal-row"><span>Bull Body</span><input type="color" id="s-up-b"></div>
+        <div class="modal-row"><span>Bull Wick & Border</span><input type="color" id="s-up-w"></div>
+        <div class="modal-row"><span>Bear Body</span><input type="color" id="s-dn-b"></div>
+        <div class="modal-row"><span>Bear Wick & Border</span><input type="color" id="s-dn-w"></div>
+        <div class="modal-row"><span>Ray Thickness</span>
+            <select id="s-ray-width">
+                <option value="1">Thin</option>
+                <option value="2">Normal</option>
+                <option value="3">Thick</option>
+            </select>
+        </div>
+        <div class="modal-row"><span>Dashboard Size</span>
+            <select id="s-dash-size">
+                <option value="0.7">Tiny</option>
+                <option value="0.85">Small</option>
+                <option value="1.0">Medium</option>
+                <option value="1.2">Big</option>
+            </select>
+        </div>
+        <div style="margin: 12px 0 6px 0; font-weight: bold; border-bottom: 1px solid var(--ui-border); padding-bottom: 4px;">Chart Elements</div>
+        <div class="modal-row"><span>Initial Buys (D/W/Coil)</span><input type="checkbox" id="s-show-buy" checked></div>
+        <div class="modal-row"><span>Add-on Buys</span><input type="checkbox" id="s-show-add" checked></div>
+        <div class="modal-row"><span>Half Exits (Scale Out)</span><input type="checkbox" id="s-show-half" checked></div>
+        <div class="modal-row"><span>Full Exits (Stop Loss)</span><input type="checkbox" id="s-show-full" checked></div>
+        <div class="modal-row"><span>ATR Trailing Line</span><input type="checkbox" id="s-show-atr-line" checked></div>
+        <div class="modal-row"><span>ATR Line Color</span><input type="color" id="s-atr-color"></div>
+        <div class="modal-row"><span>Supply Zones</span><input type="checkbox" id="s-show-sz" checked></div>
+        <div class="modal-row"><span>Current Price Line</span><input type="checkbox" id="s-show-priceline" checked></div>
+        <div class="modal-row"><span>Show Signal Text</span><input type="checkbox" id="s-show-sig-text" checked></div>
+        <button class="modal-btn" onclick="saveSettings()">Save Configuration</button>
+        <button class="modal-btn reset" onclick="resetSettings()">Reset Defaults</button>
+    </div>
+    <div id="filter-modal" class="modal">
+        <h3>Advanced Screener</h3>
+        <div class="modal-row"><span>Min Price (₹)</span><input type="number" id="f-min-p" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>Max Price (₹)</span><input type="number" id="f-max-p" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>Min % Change</span><input type="number" id="f-min-c" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>Min BP Score</span><input type="number" id="f-min-bp" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>Min RVol</span><input type="number" id="f-min-rvol" step="0.1" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>Min U/D Ratio</span><input type="number" id="f-min-ud" step="0.1" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row" style="display:block; margin-top:12px;">
+            <div style="margin-bottom:8px; border-top:1px solid var(--ui-border); padding-top:8px;">Signal Tags</div>
+            <div style="display:flex; justify-content:space-between; font-size:11px;">
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-bull"> 🟢 Buys/Adds</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-wait"> ⏳ Wait/Coil</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-trap"> 🔴 Traps/Fails</label>
+            </div>
+        </div>
+        <button class="modal-btn" onclick="applyFilters()">Apply Filters</button>
+        <button class="modal-btn reset" onclick="clearFilters()">Clear Filters</button>
+    </div>
+
+    <!-- Indicator Manager Modal -->
+    <div id="indicator-modal" class="modal">
+        <h3>Indicators</h3>
+        <div class="modal-row"><span>MTF Core (Algorithm)</span><input type="checkbox" id="ind-mtf"></div>
+        <div class="modal-row"><span>Standard EMAs (9, 21, 50, 200)</span><input type="checkbox" id="ind-emas"></div>
+        <div class="modal-row"><span>EMA Crossover (12/26)</span><input type="checkbox" id="ind-ema-cross"></div>
+        <div class="modal-row"><span>Volume + RSI(2) Sub-Pane</span><input type="checkbox" id="ind-vol-rsi"></div>
+        <div class="modal-row"><span>MACD (12, 26, 9)</span><input type="checkbox" id="ind-macd"></div>
+        <div class="modal-row"><span>RSI (14)</span><input type="checkbox" id="ind-rsi"></div>
+        <div class="modal-row"><span>Simple Volume Overlay</span><input type="checkbox" id="ind-vol-simple"></div>
+        <div class="modal-row"><span>Custom Volume Overlay</span><input type="checkbox" id="ind-vol-custom"></div>
+        <div class="modal-row"><span>Custom Volume Pane</span><input type="checkbox" id="ind-vol-custom-pane"></div>
+        
+        <hr style="border-color: var(--ui-border); margin: 15px 0;">
+        <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--ui-text);">Indicator Settings</h4>
+        <div class="modal-row"><span>RSI Period</span><input type="number" id="cfg-rsi-len" style="width:60px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>RSI Line Color</span><input type="color" id="cfg-rsi-col"></div>
+        <div class="modal-row"><span>MACD Fast / Slow / Sig</span>
+            <div style="display:flex; gap:4px;">
+                <input type="number" id="cfg-macd-f" style="width:40px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);">
+                <input type="number" id="cfg-macd-s" style="width:40px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);">
+                <input type="number" id="cfg-macd-sig" style="width:40px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);">
+            </div>
+        </div>
+        <div class="modal-row"><span>MACD Line Color</span><input type="color" id="cfg-macd-col"></div>
+        <div class="modal-row"><span>MACD Signal Color</span><input type="color" id="cfg-macd-sig-col"></div>
+        <div class="modal-row"><span>Simple Vol MA Period</span><input type="number" id="cfg-vol-ma" style="width:60px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
+        <div class="modal-row"><span>Indicator Line Thickness</span>
+            <select id="cfg-line-width" style="background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);">
+                <option value="1">Thin</option>
+                <option value="2">Normal</option>
+                <option value="3">Thick</option>
+            </select>
+        </div>
+        <button class="modal-btn" onclick="saveIndicators()" style="margin-top: 12px;">Apply Indicators & Settings</button>
+    </div>
+
+    <!-- Left Toolbar -->
+    <div id="toolbar-wrapper">
+        <div id="toolbar">
+            <button class="t-btn active" id="btn-crosshair" onclick="setTool(null)" title="Crosshair">⌖</button>
+            <button class="t-btn" id="btn-hline" onclick="setTool('hline')" title="Horizontal Line">➖</button>
+            <button class="t-btn" id="btn-hray" onclick="setTool('hray')" title="Horizontal Ray">↦</button>
+            <button class="t-btn" id="btn-trendline" onclick="setTool('trendline')" title="Trendline">📉</button>
+            <button class="t-btn" id="btn-fibo" onclick="setTool('fibo')" title="Fibonacci (2-Click)">⚄</button>
+            <button class="t-btn" id="btn-eraser" onclick="setTool('eraser')" title="Eraser Tool (Click line to delete)">⌫</button>
+            <button class="t-btn" id="btn-magnet" onclick="toggleMagnet()" title="Magnet Mode (Alt+M)">🧲</button>
+            <div style="flex-grow: 1;"></div>
+            <button class="t-btn" onclick="undoLastDrawing()" title="Undo Last Drawing" style="color:#ff9800;">↶</button>
+            <button class="t-btn" onclick="clearDrawings()" title="Clear All Drawings" style="color:#f23645;">🗑</button>
+        </div>
+        <button id="toolbar-toggle" onclick="toggleToolbar()">◀</button>
+    </div>
+
+    <!-- Main Workspace -->
+    <div id="main-workspace">
+        <div id="top-bar">
+            <!-- Left Side: Search + 20px Gap + Stock Navigation -->
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="nav-grp">
+                    <input type="text" id="top-search" list="watchlist-stocks" placeholder="Search Watchlist..." oninput="checkSearchInput(event)" onkeypress="if(event.key==='Enter') searchAndAdd()">
+                </div>
+                
+                <div class="nav-grp">
+                    <button class="nav-btn" onclick="cycleStock(-1)" title="Previous">◀</button>
+                    <span id="title-text" style="width: 95px; text-align: center; font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
+                    <button class="nav-btn" onclick="cycleStock(1)" title="Next">▶</button>
+                </div>
+            </div>
+            
+            <!-- Right Side: Replay Button + Tools -->
+            <div class="nav-grp">
+                <button class="nav-btn" id="btn-replay" onclick="toggleReplay()" title="Replay Mode" style="font-size: 16px; font-weight: bold; color: #2962ff; border-color: transparent; transition: all 0.2s;">⏮</button>
+                <button class="nav-btn" id="btn-replay-play" onclick="togglePlayPause()" title="Play / Pause (Spacebar)" style="display: none; font-size: 14px; color: #089981; border-color: transparent;">▶</button>
+                <button class="nav-btn" id="btn-replay-step" onclick="stepReplayForward()" title="Step Forward 1 Day (Shift + →)" style="display: none; font-size: 14px; border-color: transparent;">⏭</button>
+                <button class="nav-btn" id="btn-replay-exit" onclick="exitReplayMode()" title="Exit Replay (Esc)" style="display: none; font-size: 14px; color: #f23645; border-color: transparent;">⏹</button>
+                <div style="width: 1px; height: 18px; background: var(--ui-border); margin: 0 2px;"></div>
+                
+                <button class="nav-btn" onclick="openZerodha()" title="Open in Zerodha (Alt + Z)" style="font-size: 14px;">⚡</button>
+                <button class="nav-btn" onclick="openScreener()" title="Open in Screener.in (Alt + S)" style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">Sc</button>
+                <button class="nav-btn" onclick="openTradingView()" title="Open in TradingView (Alt + V)" style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">TV</button>
+                
+                <div style="width: 1px; height: 18px; background: var(--ui-border); margin: 0 2px;"></div>
+                
+                <button class="tf-btn" id="btn-tf-15m" onclick="setTimeframe('15m')">15m</button>
+                <button class="tf-btn" id="btn-tf-75m" onclick="setTimeframe('75m')">75m</button>
+                <button class="tf-btn active" id="btn-tf-D" onclick="setTimeframe('D')">D</button>
+                <button class="tf-btn" id="btn-tf-W" onclick="setTimeframe('W')">W</button>
+                <button class="tf-btn" id="btn-tf-M" onclick="setTimeframe('M')">M</button>
+                <button class="nav-btn" onclick="openIndicators()" title="Indicators" style="font-family: Georgia, serif; font-weight: bold; font-style: italic;">ƒx</button>
+                <button class="nav-btn" onclick="openSettings()" title="Settings">⚙️</button>
+                <button class="nav-btn" onclick="toggleTheme()" title="Toggle Light/Dark Theme">🌓</button>
+                <button class="nav-btn" id="btn-sync" onclick="syncAllStocks()" title="Fetch EOD Data for ALL Stocks">🔄 Sync All</button>
+                <button class="nav-btn" onclick="toggleWl()" title="Toggle Watchlist">☰</button>
+            </div>
+        </div>
+        
+        <div id="chart-container">
+            <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 10px; pointer-events: auto;">
+                <div id="company-name" style="position: relative; top: 0; left: 0;">-</div>
+                <button id="btn-toggle-emas" class="emas-on" onclick="toggleEmas()" title="Show/Hide EMAs">👁️</button>
+            </div>
+            <div id="ohlc-legend">
+                <span>O <span class="ohlc-val" id="leg-o">0.00</span></span>
+                <span>H <span class="ohlc-val" id="leg-h">0.00</span></span>
+                <span>L <span class="ohlc-val" id="leg-l">0.00</span></span>
+                <span>C <span class="ohlc-val" id="leg-c">0.00</span></span>
+                <span>V <span class="ohlc-val" id="leg-v">0</span></span>
+                <span id="leg-pct" class="ohlc-val">0.00%</span>
+            </div>
+
+            <div id="tv-chart" style="flex: 1 1 75%; min-height: 0; outline: none; overflow: hidden;"></div>
+            <div id="measure-overlay"></div>
+            <div id="measure-badge"></div>
+            
+            <!-- Dynamic Panes Factory Container -->
+            <div id="panes-container" style="display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; background: transparent; overflow: hidden;"></div>
+            
+            <button id="btn-reset" onclick="triggerNativeAuto()" title="Reset Chart View">↻</button>
+            
+            <div id="dashboard">
+                <div class="dash-row"><span class="dash-label">Signal:</span><span class="dash-val" id="dash-sig">-</span></div>
+                <div class="dash-row"><span class="dash-label">BP Score:</span><span class="dash-val" id="dash-bp">-</span></div>
+                <div class="dash-row"><span class="dash-label">RVol:</span><span class="dash-val" id="dash-rvol">-</span></div>
+                <div class="dash-row"><span class="dash-label">U/D Ratio:</span><span class="dash-val" id="dash-ud">-</span></div>
+            </div>
+        </div>
+        
+        <!-- Bottom Range & Axis Bar -->
+        <div id="bottom-bar">
+            <div style="display: flex; gap: 10px; margin-left: 15px;">
+                <button class="range-btn" onclick="setDateRange(65, this)">3M</button>
+                <button class="range-btn active" onclick="setDateRange(130, this)">6M</button>
+                <button class="range-btn" onclick="setDateRange(190, this)">9M</button>
+                <button class="range-btn" onclick="setDateRange(250, this)">1Y</button>
+                <button class="range-btn" onclick="setDateRange(750, this)">3Y</button>
+                <button class="range-btn" onclick="setDateRange(99999, this)">ALL</button>
+            </div>
+            
+            <div style="flex-grow: 1;"></div>
+            
+            <!-- A and L Buttons placed horizontally at the right end of the bottom bar -->
+            <div style="display: flex; gap: 5px; margin-right: 15px; align-items: center;">
+                <button class="axis-btn active" id="btn-auto" onclick="triggerNativeAuto()" title="Auto Scale">A</button>
+                <button class="axis-btn active" id="btn-log" onclick="toggleLog()" title="Log Scale">L</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resizer -->
+    <div id="resizer"></div>
+
+    <!-- Multiple Watchlists Panel -->
+    <div id="watchlist">
+        <div class="wl-header" style="padding: 6px 10px; gap: 6px;">
+            <div class="wl-list-mgr" style="display: flex; gap: 4px;">
+                <select id="list-selector" onchange="switchList()" style="flex-grow: 1; margin: 0;"></select>
+                <button class="wl-btn" onclick="openScreenerModal()" title="Advanced Screener" style="display:flex; align-items:center; justify-content:center; padding:4px 6px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                </button>
+                <button class="wl-btn" onclick="createNewList()" title="Create New List">➕</button>
+                <button class="wl-btn" onclick="deleteCurrentList()" title="Delete Current List" style="color:#f23645;">🗑</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; gap:4px;">
+                <button class="wl-btn" onclick="copySymbols(event)" title="Copy for TradingView" style="flex-grow:1;">📄</button>
+                <button class="wl-btn" onclick="exportCSV()" title="Export list to CSV" style="flex-grow:1;">💾</button>
+                <button class="wl-btn" onclick="pasteSymbols()" title="Paste Symbols" style="flex-grow:1;">📋</button>
+                <label class="wl-btn" style="cursor:pointer; flex-grow:1; text-align:center; box-sizing:border-box;" title="Import CSV/TXT">📁
+                    <input type="file" id="file-import" accept=".csv,.txt" style="display:none;" onchange="importCSV(event)">
+                </label>
+                <button class="wl-btn" style="color:#f23645; flex-grow:1;" onclick="clearWl()" title="Clear List">✕</button>
+            </div>
+        </div>
+        <div id="wl-list"></div>
+    </div>
+
+    <script>
+        // --- 1. MEMORY & STATE (Self-Healing) ---
+        let watchlistsData;
+        try {
+            watchlistsData = JSON.parse(localStorage.getItem('tv-watchlists-v1'));
+            if (!watchlistsData || typeof watchlistsData !== 'object' || Array.isArray(watchlistsData)) throw new Error("Invalid format");
+            if (Object.keys(watchlistsData).length === 0) throw new Error("Empty memory");
+        } catch(e) {
+            console.warn("Healing corrupted watchlist memory.");
+            watchlistsData = { "Default": [] };
+        }
+        
+        let activeListName = localStorage.getItem('tv-active-list');
+        if (!activeListName || !watchlistsData[activeListName]) {
+            activeListName = Object.keys(watchlistsData)[0] || "Default";
+        }
+        
+        // Force the active list to be a valid array to prevent crashes
+        if (!Array.isArray(watchlistsData[activeListName])) {
+            watchlistsData[activeListName] = [];
+        }
+        
+        let watchlist = watchlistsData[activeListName];
+        
+        // Save the repaired state back to the browser
+        localStorage.setItem('tv-watchlists-v1', JSON.stringify(watchlistsData));
+        localStorage.setItem('tv-active-list', activeListName);
+
+        //let currentSymbol = null; // No auto-load on startup
+        let currentSymbol = '';
+        let zerodhaTokens = {}; 
+        let cacheVersion = Date.now(); // Tracks when data was last updated
+
+        // Ask Python for the tokens when the page loads
+        async function fetchZerodhaTokens() {
+            try {
+                const res = await fetch('api/zerodha_tokens.json');
+                zerodhaTokens = await res.json();
+            } catch (err) {
+                console.error("Failed to load Zerodha tokens", err);
+            }
+        }
+        
+        // Call it right when the app boots up
+        fetchZerodhaTokens();
+
+        // --- UI Theme Initialization ---
+        let uiTheme = localStorage.getItem('tv-ui-theme') || 'dark';
+        if (uiTheme === 'light') document.body.setAttribute('data-theme', 'light');
+
+        function toggleTheme() {
+            if (document.body.getAttribute('data-theme') === 'light') {
+                document.body.removeAttribute('data-theme');
+                localStorage.setItem('tv-ui-theme', 'dark');
+            } else {
+                document.body.setAttribute('data-theme', 'light');
+                localStorage.setItem('tv-ui-theme', 'light');
+            }
+        }
+        let activeFilters = { minP: '', maxP: '', minC: '', minBp: '', minRvol: '', minUd: '', minMcap: '', maxMcap: '', sigBull: false, sigWait: false, sigTrap: false };
+
+        function openScreenerModal() {
+            document.getElementById('modal-overlay').style.display = 'block';
+            document.getElementById('filter-modal').style.display = 'block';
+        }
+
+        function applyFilters() {
+            activeFilters.minP = document.getElementById('f-min-p').value;
+            activeFilters.maxP = document.getElementById('f-max-p').value;
+            activeFilters.minC = document.getElementById('f-min-c').value;
+            activeFilters.minBp = document.getElementById('f-min-bp').value;
+            activeFilters.minRvol = document.getElementById('f-min-rvol').value;
+            activeFilters.minUd = document.getElementById('f-min-ud').value;
+            
+            activeFilters.sigBull = document.getElementById('f-sig-bull').checked;
+            activeFilters.sigWait = document.getElementById('f-sig-wait').checked;
+            activeFilters.sigTrap = document.getElementById('f-sig-trap').checked;
+            
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.getElementById('filter-modal').style.display = 'none';
+            renderWl();
+        }
+
+        function clearFilters() {
+            document.getElementById('f-min-p').value = ''; document.getElementById('f-max-p').value = '';
+            document.getElementById('f-min-c').value = ''; document.getElementById('f-min-bp').value = '';
+            document.getElementById('f-min-rvol').value = ''; document.getElementById('f-min-ud').value = '';
+            
+            document.getElementById('f-sig-bull').checked = false;
+            document.getElementById('f-sig-wait').checked = false;
+            document.getElementById('f-sig-trap').checked = false;
+            applyFilters();
+        }
+        // Load saved sort preference, default to % Chg (Highest to Lowest)
+        let sortMode = localStorage.getItem('tv-sort-mode') || 'chg';
+        let sortAsc = localStorage.getItem('tv-sort-asc') !== 'false'; // Defaults to true
+        function getSavedColor(sym) {
+            const colorLists = {
+                '🔴 Red List': 'red',
+                '🟠 Orange List': 'orange',
+                '🔵 Blue List': 'blue',
+                '🟢 Green List': 'green'
+            };
+            for (let listName in colorLists) {
+                if (watchlistsData[listName] && watchlistsData[listName].find(w => w.symbol === sym)) {
+                    return colorLists[listName];
+                }
+            }
+            return 'none';
+        }
+        let currentTimeframe = 'D'; 
+        
+        // --- EMA TOGGLE STATE & LOGIC ---
+        let emasVisible = localStorage.getItem('tv-emas-visible') !== 'false'; // Defaults to true
+        
+        function toggleEmas() {
+            emasVisible = !emasVisible;
+            localStorage.setItem('tv-emas-visible', emasVisible);
+            
+            // Switch CSS class for hover states
+            const btn = document.getElementById('btn-toggle-emas');
+            btn.className = emasVisible ? 'emas-on' : 'emas-off';
+            
+            // Instantly apply visibility to all EMAs without deleting them
+            if (ema9) ema9.applyOptions({ visible: emasVisible });
+            if (ema21) ema21.applyOptions({ visible: emasVisible });
+            if (ema50) ema50.applyOptions({ visible: emasVisible });
+            if (ema200) ema200.applyOptions({ visible: emasVisible });
+            
+            // Also toggle the EMA crossover lines if they are active
+            if (typeof ema12 !== 'undefined' && activeIndicators.includes('ema_cross')) ema12.applyOptions({ visible: emasVisible });
+            if (typeof ema26 !== 'undefined' && activeIndicators.includes('ema_cross')) ema26.applyOptions({ visible: emasVisible });
+        }
+        
+        let allSavedDrawings = JSON.parse(localStorage.getItem('tv-drawings-v1')) || {};
+        let lastChartData = []; 
+        let volumeMap = new Map(); 
+        
+        // Holds exact list of CSV files in historical_data/
+        let localAvailableStocks = [];
+        
+        // --- REPLAY STATE ---
+        let isReplaySelecting = false;
+        let isReplayActive = false;
+        let replayIndex = -1;
+        let replayTimer = null;
+        let replaySpeedMs = 100; // 100ms per candle = 10 candles per second (butter smooth)
+        
+        // --- Chart Color Defaults ---
+        
+        const defSet = { bgTop: '#d0d4dd', bgBottom: '#d0d4dd', grid: '#c8ccd6', text: '#131722', upB: '#66bb6a', upW: '#000000', dnB: '#000000', dnW: '#000000' };
+        let s_bg_top = localStorage.getItem('c_bg_top') || defSet.bgTop;
+        let s_bg_bottom = localStorage.getItem('c_bg_bottom') || defSet.bgBottom;
+        let s_grid = localStorage.getItem('c_grid') || defSet.grid;
+        let s_text = localStorage.getItem('c_text') || defSet.text;
+        let s_up_b = localStorage.getItem('c_up_b') || defSet.upB;
+        let s_up_w = localStorage.getItem('c_up_w') || defSet.upW;
+        let s_dn_b = localStorage.getItem('c_dn_b') || defSet.dnB;
+        let s_dn_w = localStorage.getItem('c_dn_w') || defSet.dnW;
+        let dashScale = parseFloat(localStorage.getItem('c_dash_scale')) || 1.0;
+        let s_ray_width = parseInt(localStorage.getItem('c_ray_width')) || 1;
+        let s_show_buy = localStorage.getItem('c_show_buy') !== 'false';
+        let s_show_add = localStorage.getItem('c_show_add') !== 'false';
+        let s_show_half = localStorage.getItem('c_show_half') !== 'false';
+        let s_show_full = localStorage.getItem('c_show_full') !== 'false';
+        let s_show_atr_line = localStorage.getItem('c_show_atr_line') !== 'false';
+        let s_atr_color = localStorage.getItem('c_atr_color') || '#2962ff'; 
+        let s_show_sz = localStorage.getItem('c_show_sz') !== 'false';
+        let s_show_priceline = localStorage.getItem('c_show_priceline') !== 'false';
+        let s_show_sig_text = localStorage.getItem('c_show_sig_text') !== 'false';
+        document.getElementById('dashboard').style.transform = `scale(${dashScale})`;
+        const numFormat = new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 });
+
+        // --- 2. RESIZER & UI OBSERVERS ---
+        const resizer = document.getElementById('resizer');
+        const sidebar = document.getElementById('watchlist');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', () => { isResizing = true; document.body.style.cursor = 'col-resize'; sidebar.style.transition = 'none'; });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newWidth = document.body.clientWidth - e.clientX - 5;
+            if (newWidth > 150 && newWidth < 600) sidebar.style.width = newWidth + 'px';
+        });
+        document.addEventListener('mouseup', () => {
+            if(isResizing) { 
+                isResizing = false; 
+                document.body.style.cursor = 'default'; 
+                
+                // Correctly resize BOTH charts to their actual flexbox heights, not the parent container height
+                const topCont = document.getElementById('tv-chart');
+                const subCont = document.getElementById('tv-sub-chart');
+                
+                chart.resize(topCont.clientWidth, topCont.clientHeight);
+                if (!subCont.classList.contains('sub-hidden')) {
+                    subChart.resize(subCont.clientWidth, subCont.clientHeight);
+                }
+            }
+        });
+
+        // Observe workspace container
+        const resizeObserver = new ResizeObserver(() => {
+            if (!isResizing && !isPaneResizing) {
+                resizeAllCharts();
+            }
+        });
+        resizeObserver.observe(document.getElementById('main-workspace'));
+
+        // Instant re-adaptation when rotating phone or resizing browser
+        window.addEventListener('resize', () => {
+            resizeAllCharts();
+            setTimeout(resizeAllCharts, 120);
+        });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeAllCharts, 100);
+            setTimeout(resizeAllCharts, 300);
+        });
+       
+        let savedWlWidth = '260px';
+        function toggleWl() { 
+        sidebar.style.transition = 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'; 
+        const isMobile = window.innerWidth <= 800;
+        const targetWidth = isMobile ? '85%' : '260px';
+
+        if (sidebar.style.width === '0px' || !sidebar.style.width) {
+            sidebar.style.width = targetWidth;
+        } else {
+            sidebar.style.width = '0px';
+        }
+    }
+        
+        // --- MISSING TOOLBAR TOGGLE FUNCTION ---
+        function toggleToolbar() { 
+            const tb = document.getElementById('toolbar');
+            const btn = document.getElementById('toolbar-toggle');
+            
+            const isCollapsing = tb.style.width !== '0px';
+
+            if (isCollapsing) {
+                tb.style.width = '0px';
+                btn.innerText = '▶';
+                localStorage.setItem('tv-toolbar-collapsed', 'true');
+            } else {
+                tb.style.width = '38px';
+                btn.innerText = '◀';
+                localStorage.setItem('tv-toolbar-collapsed', 'false');
+            }
+            
+            // Trigger proper chart resize for all active panes after animation finishes (200ms)
+            setTimeout(() => { 
+                resizeAllCharts();
+            }, 200);
+        }
+        
+        function setTimeframe(tf) {
+            currentTimeframe = tf;
+            document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-tf-' + tf).classList.add('active');
+            if(currentSymbol) loadSymbol(currentSymbol);
+        }
+
+        function openSettings() {
+            document.getElementById('s-bg-top').value = s_bg_top; document.getElementById('s-bg-bottom').value = s_bg_bottom;
+            document.getElementById('s-grid').value = s_grid; document.getElementById('s-text').value = s_text;
+            document.getElementById('s-up-b').value = s_up_b; document.getElementById('s-up-w').value = s_up_w;
+            document.getElementById('s-dn-b').value = s_dn_b; document.getElementById('s-dn-w').value = s_dn_w;
+            document.getElementById('s-dash-size').value = dashScale.toString();
+            document.getElementById('s-ray-width').value = s_ray_width.toString();
+            document.getElementById('modal-overlay').style.display = 'block'; document.getElementById('settings-modal').style.display = 'block';
+            document.getElementById('s-show-buy').checked = s_show_buy;
+            document.getElementById('s-show-add').checked = s_show_add;
+            document.getElementById('s-show-half').checked = s_show_half;
+            document.getElementById('s-show-full').checked = s_show_full;
+            document.getElementById('s-show-atr-line').checked = s_show_atr_line;
+            document.getElementById('s-atr-color').value = s_atr_color;
+            document.getElementById('s-show-sz').checked = s_show_sz;
+            document.getElementById('s-show-priceline').checked = s_show_priceline;
+            document.getElementById('s-show-sig-text').checked = s_show_sig_text;
+        }
+        function closeSettings() { 
+            document.getElementById('modal-overlay').style.display = 'none'; 
+            document.getElementById('settings-modal').style.display = 'none'; 
+            document.getElementById('filter-modal').style.display = 'none'; 
+            document.getElementById('indicator-modal').style.display = 'none'; 
+        }
+
+        // --- INDICATOR STATE MANAGER (PHASE 1 & 5) ---
+        let activeIndicators = [];
+        let indCfg = { rsi_len: 14, rsi_col: '#2962ff', macd_f: 12, macd_s: 26, macd_sig: 9, macd_col: '#2962ff', macd_sig_col: '#ff9800', vol_ma: 50, line_width: 2 }
+        try {
+            activeIndicators = JSON.parse(localStorage.getItem('tv-active-indicators')) || ['mtf_core', 'vol_rsi'];
+            const savedCfg = JSON.parse(localStorage.getItem('tv-ind-cfg'));
+            if (savedCfg) indCfg = { ...indCfg, ...savedCfg }; // Merge to preserve new defaults
+        } catch(e) {
+            localStorage.setItem('tv-active-indicators', JSON.stringify(activeIndicators));
+        }
+
+        function openIndicators() {
+            document.getElementById('ind-mtf').checked = activeIndicators.includes('mtf_core');
+            document.getElementById('ind-emas').checked = activeIndicators.includes('emas');
+            document.getElementById('ind-ema-cross').checked = activeIndicators.includes('ema_cross');
+            document.getElementById('ind-vol-rsi').checked = activeIndicators.includes('vol_rsi');
+            document.getElementById('ind-macd').checked = activeIndicators.includes('macd');
+            document.getElementById('ind-rsi').checked = activeIndicators.includes('rsi');
+            document.getElementById('ind-vol-simple').checked = activeIndicators.includes('vol_simple');
+            document.getElementById('ind-vol-custom').checked = activeIndicators.includes('vol_custom');
+            document.getElementById('ind-vol-custom-pane').checked = activeIndicators.includes('vol_custom_pane');
+            
+            document.getElementById('cfg-rsi-len').value = indCfg.rsi_len;
+            document.getElementById('cfg-rsi-col').value = indCfg.rsi_col;
+            document.getElementById('cfg-macd-f').value = indCfg.macd_f;
+            document.getElementById('cfg-macd-s').value = indCfg.macd_s;
+            document.getElementById('cfg-macd-sig').value = indCfg.macd_sig;
+            document.getElementById('cfg-macd-col').value = indCfg.macd_col;
+            document.getElementById('cfg-macd-sig-col').value = indCfg.macd_sig_col || '#ff9800';
+            document.getElementById('cfg-vol-ma').value = indCfg.vol_ma;
+            document.getElementById('cfg-line-width').value = indCfg.line_width;
+            
+            document.getElementById('modal-overlay').style.display = 'block';
+            document.getElementById('indicator-modal').style.display = 'block';
+        }
+
+        function saveIndicators() {
+            activeIndicators = [];
+            if(document.getElementById('ind-mtf').checked) activeIndicators.push('mtf_core');
+            if(document.getElementById('ind-emas').checked) activeIndicators.push('emas');
+            if(document.getElementById('ind-ema-cross').checked) activeIndicators.push('ema_cross');
+            if(document.getElementById('ind-vol-rsi').checked) activeIndicators.push('vol_rsi');
+            if(document.getElementById('ind-macd').checked) activeIndicators.push('macd');
+            if(document.getElementById('ind-rsi').checked) activeIndicators.push('rsi');
+            if(document.getElementById('ind-vol-simple').checked) activeIndicators.push('vol_simple');
+            if(document.getElementById('ind-vol-custom').checked) activeIndicators.push('vol_custom');
+            if(document.getElementById('ind-vol-custom-pane').checked) activeIndicators.push('vol_custom_pane');
+            
+            indCfg = {
+                rsi_len: parseInt(document.getElementById('cfg-rsi-len').value),
+                rsi_col: document.getElementById('cfg-rsi-col').value,
+                macd_f: parseInt(document.getElementById('cfg-macd-f').value),
+                macd_s: parseInt(document.getElementById('cfg-macd-s').value),
+                macd_sig: parseInt(document.getElementById('cfg-macd-sig').value),
+                macd_col: document.getElementById('cfg-macd-col').value,
+                macd_sig_col: document.getElementById('cfg-macd-sig-col').value,
+                vol_ma: parseInt(document.getElementById('cfg-vol-ma').value),
+                line_width: parseInt(document.getElementById('cfg-line-width').value)
+            };
+            
+            localStorage.setItem('tv-active-indicators', JSON.stringify(activeIndicators));
+            localStorage.setItem('tv-ind-cfg', JSON.stringify(indCfg));
+            closeSettings();
+            
+            if (currentSymbol) loadSymbol(currentSymbol);
+        }
+
+        // --- DYNAMIC PANE UI CONTROLS ---
+        function closeIndicatorPane(indicatorId) {
+            // 1. Remove from state array
+            activeIndicators = activeIndicators.filter(id => id !== indicatorId);
+            localStorage.setItem('tv-active-indicators', JSON.stringify(activeIndicators));
+            
+            // 2. Sync the modal checkbox so it stays accurate
+            const checkbox = document.getElementById('ind-' + indicatorId.replace('_', '-'));
+            if (checkbox) checkbox.checked = false;
+            
+            // 3. Trigger redraw to process the collapse
+            if (currentSymbol) loadSymbol(currentSymbol);
+        }
+
+        function togglePaneEye(indicatorId, btnElement) {
+            const pane = dynamicPanes[indicatorId];
+            if (!pane) return;
+            
+            const isHidden = btnElement.classList.contains('hidden-mode');
+            if (isHidden) {
+                btnElement.classList.remove('hidden-mode');
+                Object.values(pane.series).forEach(s => s.applyOptions({ visible: true }));
+            } else {
+                btnElement.classList.add('hidden-mode');
+                Object.values(pane.series).forEach(s => s.applyOptions({ visible: false }));
+            }
+        }
+        function saveSettings() {
+            s_bg_top = document.getElementById('s-bg-top').value; s_bg_bottom = document.getElementById('s-bg-bottom').value;
+            s_grid = document.getElementById('s-grid').value; s_text = document.getElementById('s-text').value;
+            s_up_b = document.getElementById('s-up-b').value; s_up_w = document.getElementById('s-up-w').value;
+            s_dn_b = document.getElementById('s-dn-b').value; s_dn_w = document.getElementById('s-dn-w').value;
+            dashScale = parseFloat(document.getElementById('s-dash-size').value);
+            s_ray_width = parseInt(document.getElementById('s-ray-width').value);
+            
+            s_show_buy = document.getElementById('s-show-buy').checked;
+            s_show_add = document.getElementById('s-show-add').checked;
+            s_show_half = document.getElementById('s-show-half').checked;
+            s_show_full = document.getElementById('s-show-full').checked;
+            s_show_atr_line = document.getElementById('s-show-atr-line').checked;
+            s_atr_color = document.getElementById('s-atr-color').value;
+            s_show_sz = document.getElementById('s-show-sz').checked;
+            s_show_priceline = document.getElementById('s-show-priceline').checked;
+            s_show_sig_text = document.getElementById('s-show-sig-text').checked;
+            
+            localStorage.setItem('c_show_buy', s_show_buy);
+            localStorage.setItem('c_show_add', s_show_add);
+            localStorage.setItem('c_show_half', s_show_half);
+            localStorage.setItem('c_show_full', s_show_full);
+            localStorage.setItem('c_show_atr_line', s_show_atr_line);
+            localStorage.setItem('c_atr_color', s_atr_color);
+            localStorage.setItem('c_show_sz', s_show_sz);
+            localStorage.setItem('c_show_priceline', s_show_priceline);            
+            localStorage.setItem('c_show_sig_text', s_show_sig_text);            
+            localStorage.setItem('c_bg_top', s_bg_top); localStorage.setItem('c_bg_bottom', s_bg_bottom);
+            localStorage.setItem('c_grid', s_grid); localStorage.setItem('c_text', s_text);
+            localStorage.setItem('c_up_b', s_up_b); localStorage.setItem('c_up_w', s_up_w); 
+            localStorage.setItem('c_dn_b', s_dn_b); localStorage.setItem('c_dn_w', s_dn_w);
+            localStorage.setItem('c_dash_scale', dashScale);
+            localStorage.setItem('c_ray_width', s_ray_width);
+            applySettings(); 
+            closeSettings();
+            // Instantly re-render the chart from the 0ms RAM cache to apply marker toggles
+            if (currentSymbol) loadSymbol(currentSymbol); 
+        }
+        function resetSettings() {
+            document.getElementById('s-bg-top').value = defSet.bgTop; document.getElementById('s-bg-bottom').value = defSet.bgBottom;
+            document.getElementById('s-grid').value = defSet.grid; document.getElementById('s-text').value = defSet.text;
+            document.getElementById('s-up-b').value = defSet.upB; document.getElementById('s-up-w').value = defSet.upW;
+            document.getElementById('s-dn-b').value = defSet.dnB; document.getElementById('s-dn-w').value = defSet.dnW;
+            document.getElementById('s-dash-size').value = "0.85";
+            document.getElementById('s-ray-width').value = "1";
+            
+            document.getElementById('s-show-buy').checked = true;
+            document.getElementById('s-show-add').checked = true;
+            document.getElementById('s-show-half').checked = true;
+            document.getElementById('s-show-full').checked = true;
+            document.getElementById('s-show-atr-line').checked = true;
+            document.getElementById('s-atr-color').value = '#2962ff';
+            document.getElementById('s-show-sz').checked = true;
+            document.getElementById('s-show-priceline').checked = true;
+            document.getElementById('s-show-sig-text').checked = true;
+            
+            // Wipe the saved pane layout memory
+            window.customBottomPct = null;
+            localStorage.removeItem('tv-pane-pct');
+            updateTimeScaleVisibility(); // Force UI to instantly snap back to default layout
+            
+            saveSettings();
+        }
+        function applySettings() {
+            // Apply theme to Top Chart
+            chart.applyOptions({ 
+                layout: { background: { type: 'gradient', topColor: s_bg_top, bottomColor: s_bg_bottom }, textColor: s_text }, 
+                grid: { vertLines: { color: s_grid }, horzLines: { color: s_grid } }
+            });
+            // Apply theme to all Dynamic Panes
+            Object.values(dynamicPanes).forEach(p => {
+                p.chart.applyOptions({ 
+                    layout: { background: { type: 'gradient', topColor: s_bg_top, bottomColor: s_bg_bottom }, textColor: s_text }, 
+                    grid: { vertLines: { color: s_grid }, horzLines: { color: s_grid } }
+                });
+            });
+            
+            candleSeries.applyOptions({ upColor: s_up_b, downColor: s_dn_b, borderVisible: true, borderUpColor: s_up_w, borderDownColor: s_dn_w, wickUpColor: s_up_w, wickDownColor: s_dn_w, priceLineVisible: s_show_priceline });
+            atrSeries.applyOptions({ color: s_atr_color, visible: s_show_atr_line });
+            
+            // Sync all floating text colors
+            document.getElementById('ohlc-legend').style.color = s_text;
+            document.getElementById('company-name').style.color = s_text;
+            document.querySelectorAll('.pane-header').forEach(el => el.style.color = s_text);
+            
+            document.getElementById('dashboard').style.transform = `scale(${dashScale})`;
+            axisMarkers.forEach(series => series.applyOptions({ lineWidth: s_ray_width }));
+        }
+
+        // --- 3. MULTIPLE WATCHLISTS ---
+        function updateListDropdown() {
+            const sel = document.getElementById('list-selector');
+            sel.innerHTML = '';
+            Object.keys(watchlistsData).forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name; 
+                opt.innerText = `${name} (${watchlistsData[name].length})`;
+                if(name === activeListName) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+        function switchList() {
+            activeListName = document.getElementById('list-selector').value;
+            localStorage.setItem('tv-active-list', activeListName);
+            watchlist = watchlistsData[activeListName];
+            updateDatalist();
+            renderWl();
+            fetchWlData();
+        }
+        function createNewList() {
+            const name = prompt("Enter new watchlist name:");
+            if(name && name.trim() !== "" && !watchlistsData[name]) {
+                watchlistsData[name] = []; activeListName = name; watchlist = watchlistsData[activeListName];
+                localStorage.setItem('tv-active-list', activeListName); saveWatchlists(); updateListDropdown(); updateDatalist(); renderWl();
+            }
+        }
+        function deleteCurrentList() {
+            if(Object.keys(watchlistsData).length <= 1) return alert("Cannot delete your only watchlist.");
+            if(confirm(`Delete watchlist '${activeListName}'?`)) {
+                
+                // If deleting a colored list permanently, strip those colors from the main list first
+                const colorLists = ['🔴 Red List', '🟠 Orange List', '🔵 Blue List', '🟢 Green List'];
+                if (colorLists.includes(activeListName)) {
+                    const stocksToReset = watchlist.map(w => w.symbol);
+                    Object.keys(watchlistsData).forEach(listName => {
+                        watchlistsData[listName].forEach(item => {
+                            if (stocksToReset.includes(item.symbol)) {
+                                item.color = 'none';
+                            }
+                        });
+                    });
+                }
+
+                delete watchlistsData[activeListName];
+                activeListName = Object.keys(watchlistsData)[0]; 
+                watchlist = watchlistsData[activeListName];
+                localStorage.setItem('tv-active-list', activeListName); 
+                saveWatchlists(); 
+                updateListDropdown(); 
+                updateDatalist(); 
+                renderWl(); 
+                fetchWlData();
+            }
+        }
+        function saveWatchlists() { 
+            localStorage.setItem('tv-watchlists-v1', JSON.stringify(watchlistsData)); 
+            
+            // Auto-update stock counts in the dropdown without losing focus
+            const sel = document.getElementById('list-selector');
+            if (sel) {
+                Array.from(sel.options).forEach(opt => {
+                    const listName = opt.value;
+                    if(watchlistsData[listName]) {
+                        opt.innerText = `${listName} (${watchlistsData[listName].length})`;
+                    }
+                });
+            }
+        }
+        function copySymbols(e) {
+            // Only grab the visible rows currently rendered after filtering
+            const items = Array.from(document.querySelectorAll('.wl-item'));
+            if (items.length === 0) return alert("No visible stocks to copy.");
+            
+            // Creates a comma-separated list of the filtered stocks in their current sorted order
+            const symbols = items.map(el => el.dataset.sym).filter(Boolean).join(',');
+            
+            navigator.clipboard.writeText(symbols).then(() => {
+                // Flash the button green for immediate visual feedback
+                const btn = e.target;
+                const originalText = btn.innerText;
+                btn.innerText = "✅ Copied!";
+                btn.style.color = "#089981";
+                setTimeout(() => { btn.innerText = originalText; btn.style.color = ""; }, 1500);
+            }).catch(() => alert("Failed to copy."));
+        }
+
+        function exportCSV() {
+            const items = Array.from(document.querySelectorAll('.wl-item'));
+            if (items.length === 0) return alert("No visible stocks to export.");
+            
+            const visibleSymbols = items.map(el => el.dataset.sym).filter(Boolean);
+            const listToExport = watchlist.filter(w => visibleSymbols.includes(w.symbol));
+            
+            // Generate clean CSV payload
+            let csvContent = "data:text/csv;charset=utf-8,SYMBOL,CMP,%CHG,SIGNAL\n";
+            listToExport.forEach(w => {
+                csvContent += `${w.symbol},${w.cmp || 0},${w.chg || 0},${w.signal || '-'}\n`;
+            });
+            
+            // Trigger browser download
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `${activeListName.replace(/[^a-z0-9]/gi, '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function fetchAvailableStocks() {
+            try {
+                const res = await fetch('/api/stocks');
+                localAvailableStocks = await res.json();
+            } catch(e) { console.error("Failed to fetch available stocks:", e); }
+        }
+
+        // --- FETCH WATCHLIST IN CHUNKS (PREVENTS 414 ERROR AND FREEZES) ---
+        async function fetchWlData(specificSymbols = null) {async function fetchWlData
+
+                fetchPromises.push(req);
+            }
+
+            await Promise.all(fetchPromises);
+        }
+        
+        // --- LIVE SYNC PROGRESS COUNTER ---
+        async function syncAllStocks() {
+            const syncBtn = document.getElementById('btn-sync');
+            const originalText = syncBtn.innerText;
+            syncBtn.disabled = true; 
+            syncBtn.style.color = '#ff9800'; 
+
+            try {
+                const res = await fetch('/api/stocks');
+                const stocks = await res.json();
+                // --- ADD THESE 3 LINES ---
+                watchlist.forEach(w => {
+                    if (!stocks.includes(w.symbol)) stocks.push(w.symbol);
+                });
+                // -------------------------
+                if (stocks.length === 0) {
+                    alert("No stocks found in historical_data folder.");
+                    syncBtn.innerText = '🔄 Sync All';
+                    syncBtn.disabled = false;
+                    return;
+                }
+
+                let updatedCount = 0;
+                
+                for (let i = 0; i < stocks.length; i++) {
+                    syncBtn.innerText = `⏳ Syncing ${i + 1}/${stocks.length}...`;
+                    const syncRes = await fetch(`/api/sync/${stocks[i]}`);
+                    const result = await syncRes.json();
+                    if (result.status === 'success') {
+                        updatedCount++;
+                    }
+                }
+                
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                syncBtn.innerText = `✅ 🔄: ${timeStr}`;
+                syncBtn.style.color = '#089981'; 
+
+                alert(`Sync Complete: Scanned ${stocks.length} stocks. Appended new EOD data for ${updatedCount} stocks.`);
+                
+                // Bust the browser cache ONLY because new data was just downloaded
+                cacheVersion = Date.now(); 
+                
+                await fetchAvailableStocks();
+                await fetchWlData(); 
+                if (currentSymbol) loadSymbol(currentSymbol); 
+
+            } catch (err) {
+                console.error(err);
+                alert(`Failed to sync database. Check Python server console.`);
+                syncBtn.innerText = '🔄 Sync All';
+                syncBtn.style.color = '';
+            } finally {
+                syncBtn.disabled = false;
+            }
+        }
+
+        function setSort(mode) {
+            if(sortMode === mode) sortAsc = !sortAsc; else { sortMode = mode; sortAsc = true; }
+            // Save the new preference to memory
+            localStorage.setItem('tv-sort-mode', sortMode);
+            localStorage.setItem('tv-sort-asc', sortAsc);
+            renderWl();
+        }
+                // --- DRAG & DROP AND MOVE LOGIC ---
+        let draggedSym = null;
+
+        function handleDragStart(e) {
+            draggedSym = this.dataset.sym;
+            e.dataTransfer.effectAllowed = 'move';
+            
+            // Lock the current visual order as the new permanent array order
+            watchlist = Array.from(document.querySelectorAll('.wl-item')).map(el => 
+                watchlist.find(w => w.symbol === el.dataset.sym)
+            );
+            watchlistsData[activeListName] = watchlist;
+            
+            // Switch to manual mode so the list doesn't immediately auto-resort
+            sortMode = 'manual';
+            localStorage.setItem('tv-sort-mode', sortMode);
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragEnter(e) {
+            this.style.borderTop = '2px solid #2962ff';
+        }
+
+        function handleDragLeave(e) {
+            this.style.borderTop = '';
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) e.stopPropagation();
+            this.style.borderTop = '';
+            
+            const dropSym = this.dataset.sym;
+            if (draggedSym && draggedSym !== dropSym) {
+                const dragIdx = watchlist.findIndex(w => w.symbol === draggedSym);
+                const dropIdx = watchlist.findIndex(w => w.symbol === dropSym);
+                
+                if (dragIdx > -1 && dropIdx > -1) {
+                    const draggedItem = watchlist.splice(dragIdx, 1)[0];
+                    watchlist.splice(dropIdx, 0, draggedItem);
+                    watchlistsData[activeListName] = watchlist;
+                    saveWatchlists();
+                    renderWl();
+                }
+            }
+            return false;
+        }
+
+        // --- RIGHT-CLICK CONTEXT MENU LOGIC ---
+        let ctxTargetSym = null;
+
+        function showContextMenu(e, sym) {
+            e.preventDefault(); // Disables the default browser right-click menu
+            ctxTargetSym = sym;
+            
+            // Auto-create the menu HTML if it doesn't exist yet
+            let ctxMenu = document.getElementById('wl-context-menu');
+            if (!ctxMenu) {
+                ctxMenu = document.createElement('div');
+                ctxMenu.id = 'wl-context-menu';
+                document.body.appendChild(ctxMenu);
+                
+                // Hide menu when clicking anywhere else
+                document.addEventListener('click', (event) => {
+                    if (event.target.closest('#wl-context-menu') === null) {
+                        ctxMenu.style.display = 'none';
+                    }
+                });
+            }
+            
+            const lists = Object.keys(watchlistsData).filter(n => n !== activeListName);
+            if (lists.length === 0) {
+                ctxMenu.innerHTML = '<div class="ctx-header">Create another list first</div>';
+            } else {
+                ctxMenu.innerHTML = `<div class="ctx-header">Copy ${sym} to:</div>`;
+                lists.forEach(listName => {
+                    const div = document.createElement('div');
+                    div.className = 'ctx-item';
+                    div.innerText = listName;
+                    div.onclick = () => executeMove(listName);
+                    ctxMenu.appendChild(div);
+                });
+            }
+            
+            ctxMenu.style.display = 'block';
+            
+            // Keep menu strictly inside window bounds
+            const menuWidth = 130;
+            const menuHeight = ctxMenu.offsetHeight;
+            const xPos = (e.pageX + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth : e.pageX;
+            const yPos = (e.pageY + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight : e.pageY;
+            
+            ctxMenu.style.left = `${xPos}px`;
+            ctxMenu.style.top = `${yPos}px`;
+        }
+
+        function executeMove(targetList) {
+        if (!ctxTargetSym) return;
+        const ctxMenu = document.getElementById('wl-context-menu');
+        
+        // Check if the stock isn't already in the target list
+        if (!watchlistsData[targetList].find(w => w.symbol === ctxTargetSym)) {
+            const item = watchlist.find(w => w.symbol === ctxTargetSym);
+            if(item) {
+                // Instantly copy the exact item state to the new list
+                watchlistsData[targetList].push({ 
+                    symbol: item.symbol, 
+                    color: item.color, 
+                    chg: item.chg, 
+                    cmp: item.cmp, 
+                    signal: item.signal 
+                });
+                saveWatchlists();
+                
+                // Trigger visual flash confirmation
+                const row = document.querySelector(`.wl-item[data-sym="${ctxTargetSym}"]`);
+                if (row) {
+                    row.classList.add('flash-success');
+                    setTimeout(() => row.classList.remove('flash-success'), 500);
+                }
+            }
+        }
+        
+        // Silently close the menu
+        if (ctxMenu) ctxMenu.style.display = 'none';
+    }
+
+        // Hide context menu when clicking anywhere else
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#wl-context-menu') === null) {
+                ctxMenu.style.display = 'none';
+            }
+        });
+            function renderWl() {
+            const cont = document.getElementById('wl-list');
+            const scrollPos = cont.scrollTop; // <-- ADDED: Memorize scroll depth
+            cont.innerHTML = '';
+            let displayList = [...watchlist];
+            
+            // Assign numerical weights strictly for the color sort
+            const colorWeights = { 'none': 0, 'red': 1, 'orange': 2, 'blue': 3, 'green': 4 };
+
+            // --- ADVANCED SCREENER INTERCEPT ---
+            displayList = displayList.filter(item => {
+                if (activeFilters.minP !== '' && (item.cmp || 0) < parseFloat(activeFilters.minP)) return false;
+                if (activeFilters.maxP !== '' && (item.cmp || 0) > parseFloat(activeFilters.maxP)) return false;
+                if (activeFilters.minC !== '' && (item.chg || 0) < parseFloat(activeFilters.minC)) return false;
+                if (activeFilters.minBp !== '' && (item.bp || 0) < parseFloat(activeFilters.minBp)) return false;
+                if (activeFilters.minRvol !== '' && (item.rvol || 0) < parseFloat(activeFilters.minRvol)) return false;
+                if (activeFilters.minUd !== '' && (item.ud || 0) < parseFloat(activeFilters.minUd)) return false;
+                
+                // Multi-Select Signal Filter Check
+                const hasSignalFilter = activeFilters.sigBull || activeFilters.sigWait || activeFilters.sigTrap;
+                
+                if (hasSignalFilter) {
+                    const isBull = item.signal && (item.signal.includes('BUY') || item.signal.includes('ADD') || item.signal.includes('PRIME'));
+                    const isWait = item.signal && (item.signal.includes('WAIT') || item.signal.includes('COIL'));
+                    const isTrap = item.signal && (item.signal.includes('HIGH') || item.signal.includes('EXTENDED') || item.signal.includes('EXHAUSTED') || item.signal.includes('FAIL') || item.signal.includes('STOPPED') || item.signal.includes('BROKEN'));
+                    
+                    let keepSignal = false;
+                    if (activeFilters.sigBull && isBull) keepSignal = true;
+                    if (activeFilters.sigWait && isWait) keepSignal = true;
+                    if (activeFilters.sigTrap && isTrap) keepSignal = true;
+                    
+                    if (!keepSignal) return false;
+                }
+                return true;
+            });
+
+            const isMtfActive = activeIndicators.includes('mtf_core');
+
+        displayList.forEach(item => {
+            item.badgeTxt = '-'; item.badgeCol = 'transparent'; item.sortVal = 0;
+            if(isMtfActive && item.signal) {
+                // Check for Macro Breakout first
+                    if(item.signal.includes('MACRO')) { 
+                        item.badgeTxt = 'W'; item.badgeCol = '#00bcd4'; item.sortVal = 7; // Cyan 'W' (Highest Priority)
+                    }
+                    else if(item.signal.includes('BUY') || item.signal.includes('EMA') || item.signal.includes('HOLD')) { 
+                        item.badgeTxt = 'B'; item.badgeCol = '#089981'; item.sortVal = 5; 
+                    }
+                    else if(item.signal.includes('ADD')) { 
+                        item.badgeTxt = 'A'; item.badgeCol = '#2962FF'; item.sortVal = 4; // Blue for Add-ons
+                    }
+                    else if(item.signal.includes('PRIME')) { 
+                        item.badgeTxt = 'P'; item.badgeCol = '#FFB300'; item.sortVal = 6; // Vibrant Gold 
+                    }
+                    else if(item.signal.includes('WAIT') || item.signal.includes('BROKEN') || item.signal.includes('STOPPED')) { 
+                        item.badgeTxt = 'W'; item.badgeCol = '#ff9800'; item.sortVal = 3; 
+                    }
+                    else if(item.signal.includes('HIGH') || item.signal.includes('EXTENDED') || item.signal.includes('EXHAUSTED')) { 
+                        item.badgeTxt = 'T'; item.badgeCol = '#9C27B0'; item.sortVal = 2; // Purple for Traps
+                    }
+                    else if(item.signal.includes('FAIL')) { 
+                        item.badgeTxt = 'F'; item.badgeCol = '#f23645'; item.sortVal = 1; 
+                    }
+                }
+            });
+
+            // Independent Sorting Rules
+            if (sortMode === 'sym') displayList.sort((a,b) => sortAsc ? a.symbol.localeCompare(b.symbol) : b.symbol.localeCompare(a.symbol));
+            if (sortMode === 'cmp') displayList.sort((a,b) => sortAsc ? (b.cmp||0) - (a.cmp||0) : (a.cmp||0) - (b.cmp||0));
+            if (sortMode === 'chg') displayList.sort((a,b) => sortAsc ? (b.chg||0) - (a.chg||0) : (a.chg||0) - (b.chg||0));
+            
+            // "Tag ↕" Column (Signals Only)
+            if (sortMode === 'status') displayList.sort((a,b) => sortAsc ? b.sortVal - a.sortVal : a.sortVal - b.sortVal);
+            
+            // "◯" Column (Colors Only)
+            if (sortMode === 'color') displayList.sort((a,b) => sortAsc ? colorWeights[b.color || 'none'] - colorWeights[a.color || 'none'] : colorWeights[a.color || 'none'] - colorWeights[b.color || 'none']);
+            // Analytical Columns
+            if (sortMode === 'bp') displayList.sort((a,b) => sortAsc ? (b.bp||0) - (a.bp||0) : (a.bp||0) - (b.bp||0));
+            if (sortMode === 'rvol') displayList.sort((a,b) => sortAsc ? (b.rvol||0) - (a.rvol||0) : (a.rvol||0) - (b.rvol||0));
+            if (sortMode === 'ud') displayList.sort((a,b) => sortAsc ? (b.ud||0) - (a.ud||0) : (a.ud||0) - (b.ud||0));
+
+            // Inject the dynamic header row directly into the scrolling container
+            cont.innerHTML = `
+                <div class="wl-cols">
+                    <div class="col-color" onclick="setSort('color')" title="Sort by Color">◯</div>
+                    <div class="col-sym" onclick="setSort('sym')">Symbol ↕</div>
+                    <div class="col-cmp" onclick="setSort('cmp')">CMP ↕</div>
+                    <div class="col-chg" onclick="setSort('chg')">% Chg ↕</div>
+                    <div class="col-tag" onclick="setSort('status')">Tag ↕</div>
+                    <div class="col-bp" onclick="setSort('bp')">BP ↕</div>
+                    <div class="col-rvol" onclick="setSort('rvol')">RVol ↕</div>
+                    <div class="col-ud" onclick="setSort('ud')">U/D ↕</div>
+                </div>
+            `;
+
+            displayList.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = `wl-item ${item.symbol === currentSymbol ? 'active' : ''}`;
+                div.dataset.sym = item.symbol; 
+                div.draggable = true; 
+                
+                const chgVal = item.chg || 0;
+                const wlTextColor = chgVal >= 0 ? '#089981' : '#f23645';
+                
+                const displayBp = isMtfActive && item.bp !== undefined && item.bp !== null ? item.bp : '-';
+                const displayRvol = isMtfActive && item.rvol !== undefined && item.rvol !== null ? item.rvol.toFixed(2) : '-';
+                const displayUd = isMtfActive && item.ud !== undefined && item.ud !== null ? item.ud.toFixed(2) : '-';
+                
+                // Escape quotes so they don't break the inline HTML onclick attributes
+                const safeSym = item.symbol.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                div.innerHTML = `
+                    <div class="item-color"><div class="color-tag tag-${item.color}" onclick="cycleColor(event, '${safeSym}')"></div></div>
+                    <div class="item-sym" onclick="loadSymbol('${safeSym}')">${item.symbol}</div>
+                    <div class="item-cmp" onclick="loadSymbol('${safeSym}')">${item.cmp ? item.cmp.toFixed(2) : '0.00'}</div>
+                    <div class="item-chg" onclick="loadSymbol('${safeSym}')" style="color: ${wlTextColor}">${chgVal >= 0 ? '+' : ''}${chgVal.toFixed(2)}%</div>
+                    <div class="item-flags" onclick="loadSymbol('${safeSym}')"><div class="sig-badge" style="background: ${item.badgeCol};" onclick="setSort('status'); event.stopPropagation();">${item.badgeTxt}</div></div>
+                    <div class="item-bp" onclick="loadSymbol('${safeSym}')">${displayBp}</div>
+                    <div class="item-rvol" onclick="loadSymbol('${safeSym}')">${displayRvol}</div>
+                    <div class="item-ud" onclick="loadSymbol('${safeSym}')">${displayUd}</div>
+                    <div class="del-btn" onclick="removeWl(event, '${safeSym}')" title="Remove Stock">✕</div>
+                `;
+                
+                // Bind events
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('dragenter', handleDragEnter);
+                div.addEventListener('dragleave', handleDragLeave);
+                div.addEventListener('drop', handleDrop);
+                div.addEventListener('contextmenu', (e) => showContextMenu(e, item.symbol));
+
+                cont.appendChild(div);
+            });
+            
+            if (currentSymbol) {
+                const activeItem = displayList.find(w => w.symbol === currentSymbol);
+                if (activeItem) {
+                    const tCmp = activeItem.cmp ? activeItem.cmp.toFixed(2) : "0.00";
+                    const tChg = activeItem.chg ? activeItem.chg : 0;
+                    const tArr = tChg >= 0 ? '▲' : '▼';
+                    const tSig = tChg > 0 ? '+' : '';
+                    document.title = `${currentSymbol} ${tCmp} ${tArr} ${tSig}${tChg.toFixed(2)}% Hafs`;
+                }
+            } else {
+                document.title = "Hafs Terminal";
+            }
+
+            saveWatchlists();
+            cont.scrollTop = scrollPos; // <-- ADDED: Instantly restore scroll depth
+        }
+
+        // --- GLOBAL SEARCH AUTOCOMPLETE ---
+        function updateDatalist() {
+            const dl = document.getElementById('watchlist-stocks');
+            dl.innerHTML = '';
+            localAvailableStocks.forEach(sym => {
+                const opt = document.createElement('option');
+                opt.value = sym;
+                dl.appendChild(opt);
+            });
+        }
+        
+        // --- CENTRAL SYMBOL CLEANER (Filters Chartink dates, hashtags, etc) ---
+        function parseSymbols(rawText) {
+            const invalidTokens = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'SEPT', 'OCT', 'NOV', 'DEC', 'SYMBOL', 'STOCK', 'NAME', 'CLOSE', 'VOLUME'];
+            
+            return rawText.split(/[\s,\n]+/)
+                .map(s => s.replace(/^(NSE|BSE):/i, '').replace(/['"’‘#]/g, '').trim().toUpperCase())
+                .filter(s => {
+                    if (!s) return false;
+                    if (!isNaN(s)) return false; // Drops pure numbers like 22, 2026, or prices
+                    if (invalidTokens.includes(s)) return false; // Drops month names & headers
+                    return true;
+                });
+        }
+
+        // --- STRIPS "NSE:", "BSE:", & INSTANT SEARCH ---
+        function checkSearchInput(e) {
+            let val = e.target.value.toUpperCase().trim();
+            val = val.replace(/^(NSE|BSE):/i, '').replace(/['"’‘#]/g, '').trim(); 
+            
+            // Instantly trigger if the clicked/typed text matches a downloaded stock
+            if (localAvailableStocks.includes(val)) {
+                searchAndAdd(val); 
+            }
+        }
+
+        // --- FIX 6: Viewport & Keyboard Resets (Global Scope) ---
+        const searchEl = document.getElementById('top-search');
+        if (searchEl) {
+            searchEl.addEventListener('blur', () => {
+                window.scrollTo(0, 0);
+                document.body.scrollTop = 0;
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    resizeAllCharts();
+                }, 120);
+            });
+        }
+
+        // Watch Samsung Internet / Chrome dynamic viewport resets
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                window.scrollTo(0, 0);
+                setTimeout(resizeAllCharts, 100);
+            });
+        }
+
+        function searchAndAdd(forceVal = null) {
+            const input = document.getElementById('top-search');
+            const rawVal = forceVal || input.value.toUpperCase().trim();
+            if(!rawVal) return;
+            
+            const symbols = parseSymbols(rawVal);
+            if (symbols.length === 0) return;
+
+            const newSymbols = [];
+            symbols.forEach(sym => {
+                if (!watchlist.find(w => w.symbol === sym)) {
+                    watchlist.push({symbol: sym, color: getSavedColor(sym), chg: 0, cmp: 0, signal: '-'});
+                    newSymbols.push(sym);
+                }
+            });
+
+            updateDatalist();
+            renderWl(); 
+            if (newSymbols.length > 0) fetchWlData(newSymbols);
+            
+            input.value = ''; 
+            input.blur();
+            if (symbols.length === 1) loadSymbol(symbols[0]); 
+        }
+
+        function pasteSymbols() {
+            const text = prompt("Paste comma-separated or space-separated symbols:");
+            if (!text) return;
+
+            const symbols = parseSymbols(text);
+            const newSymbols = [];
+
+            symbols.forEach(sym => {
+                if (!watchlist.find(w => w.symbol === sym)) {
+                    watchlist.push({ symbol: sym, color: getSavedColor(sym), chg: 0, cmp: 0, signal: '-' });
+                    newSymbols.push(sym);
+                }
+            });
+
+            updateDatalist();
+            renderWl();
+            if (newSymbols.length > 0) fetchWlData(newSymbols);
+        }
+
+        function removeWl(e, sym) { 
+            e.stopPropagation(); 
+            
+            // If deleting from a colored list, globally reset this stock's color to 'none'
+            const colorLists = ['🔴 Red List', '🟠 Orange List', '🔵 Blue List', '🟢 Green List'];
+            if (colorLists.includes(activeListName)) {
+                Object.keys(watchlistsData).forEach(listName => {
+                    let item = watchlistsData[listName].find(w => w.symbol === sym);
+                    if (item) item.color = 'none';
+                });
+            }
+
+            watchlist = watchlist.filter(w => w.symbol !== sym); 
+            watchlistsData[activeListName] = watchlist; 
+            saveWatchlists(); 
+            updateDatalist();
+            renderWl(); 
+            if (currentSymbol === sym) {
+                currentSymbol = null;
+                clearChartData("Select a Stock From List");
+            }
+        }
+        
+        function clearWl() { 
+            // If clearing a colored list entirely, globally reset ALL colors for these stocks
+            const colorLists = ['🔴 Red List', '🟠 Orange List', '🔵 Blue List', '🟢 Green List'];
+            if (colorLists.includes(activeListName)) {
+                const stocksToReset = watchlist.map(w => w.symbol);
+                Object.keys(watchlistsData).forEach(listName => {
+                    watchlistsData[listName].forEach(item => {
+                        if (stocksToReset.includes(item.symbol)) {
+                            item.color = 'none';
+                        }
+                    });
+                });
+            }
+
+            watchlist = []; 
+            watchlistsData[activeListName] = watchlist; 
+            currentSymbol = null; 
+            saveWatchlists();
+            updateDatalist();
+            renderWl(); 
+            clearChartData("Select a Stock From List"); 
+        }
+        
+        function cycleColor(e, sym) {
+        e.stopPropagation();
+        const colors = ['none', 'red', 'orange', 'blue', 'green'];
+        
+        let currentItem = watchlist.find(w => w.symbol === sym);
+        if (!currentItem) return;
+        
+        let oldColor = currentItem.color;
+        let newColor = colors[(colors.indexOf(oldColor) + 1) % colors.length];
+        
+        // Define the official names for your auto-generated lists
+        const colorListNames = {
+            'red': '🔴 Red List',
+            'orange': '🟠 Orange List',
+            'blue': '🔵 Blue List',
+            'green': '🟢 Green List'
+        };
+
+        // 1. Remove the stock from the previous color list
+        if (oldColor !== 'none' && watchlistsData[colorListNames[oldColor]]) {
+            watchlistsData[colorListNames[oldColor]] = watchlistsData[colorListNames[oldColor]].filter(w => w.symbol !== sym);
+        }
+
+        // 2. Auto-create and add to the new color list
+        if (newColor !== 'none') {
+            let newListName = colorListNames[newColor];
+            if (!watchlistsData[newListName]) {
+                watchlistsData[newListName] = []; // Create list if it doesn't exist
+            }
+            
+            if (!watchlistsData[newListName].find(w => w.symbol === sym)) {
+                // Clone the item data into the new list
+                watchlistsData[newListName].push({ ...currentItem, color: newColor });
+            }
+        }
+
+        // 3. Globally sync the color tag across ALL your watchlists
+        // 3. Globally sync the color tag across ALL your watchlists
+        Object.keys(watchlistsData).forEach(listName => {
+            let item = watchlistsData[listName].find(w => w.symbol === sym);
+            if (item) item.color = newColor;
+        });
+
+        // ADD THIS LINE: Re-links the active watchlist memory reference
+        watchlist = watchlistsData[activeListName];
+
+        saveWatchlists();
+        updateListDropdown();
+        renderWl();
+    }
+        
+        function importCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const symbols = parseSymbols(e.target.result);
+                symbols.forEach(s => { 
+                    if (!watchlist.find(w => w.symbol === s)) {
+                        watchlist.push({symbol: s, color: getSavedColor(s), chg: 0, cmp: 0, signal: '-'}); 
+                    }
+                });
+                updateDatalist();
+                renderWl(); 
+                fetchWlData();
+            };
+            reader.readAsText(file); event.target.value = '';
+        }
+
+        function cycleStock(dir) {
+            const items = Array.from(document.querySelectorAll('.wl-item'));
+            if (items.length === 0) return;
+            let idx = items.findIndex(el => el.classList.contains('active'));
+            if (idx === -1) idx = 0;
+            else { idx += dir; if (idx >= items.length) idx = 0; if (idx < 0) idx = items.length - 1; }
+            loadSymbol(items[idx].dataset.sym);
+            setTimeout(() => {
+                const activeEl = document.querySelector('.wl-item.active');
+                if(activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 50);
+        }
+        function openZerodha() {
+            if (!currentSymbol) {
+                alert("Please select a stock first.");
+                return;
+            }
+            
+            // Check if we have the secret token for this stock
+            const token = zerodhaTokens[currentSymbol];
+            if (!token) {
+                alert(`Could not find Zerodha token for ${currentSymbol}. Try refreshing the page.`);
+                return;
+            }
+
+            // Open the exact TradingView chart format you discovered
+            const url = `https://kite.zerodha.com/markets/ext/chart/web/tvc/NSE/${currentSymbol}/${token}`;
+            window.open(url, '_blank');
+        }
+
+        function openScreener() {
+            if (!currentSymbol) {
+                alert("Please select a stock first.");
+                return;
+            }
+            // Opens Screener.in consolidated view for the active symbol
+            const url = `https://www.screener.in/company/${currentSymbol}/consolidated/`;
+            window.open(url, '_blank');
+        }
+
+        function openTradingView() {
+            if (!currentSymbol) {
+                alert("Please select a stock first.");
+                return;
+            }
+            // Opens the default TradingView advanced chart for the active symbol
+            const url = `https://in.tradingview.com/chart/?symbol=NSE:${currentSymbol}`;
+            window.open(url, '_blank');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            // 1. Universal Shortcuts (Work even if typing in an input)
+            if (e.key === 'Escape') {
+                closeSettings();
+                setTool(null); // Return to crosshair mode
+                if (isReplaySelecting || isReplayActive) exitReplayMode();
+                return;
+            }
+            
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undoLastDrawing();
+                return;
+            }
+
+            // Spacebar: Single-press Play / Pause auto-play
+            if (isReplayActive && (e.code === 'Space' || e.key === ' ')) {
+                e.preventDefault();
+                togglePlayPause();
+                return;
+            }
+
+            // --- Replay Mode Forward Engine (Manual Step) ---
+            if (isReplayActive && e.shiftKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (e.repeat) return; // INSTANTLY blocks OS key-hold flooding
+                stepReplayForward();
+                return;
+            }
+
+            // Prevent executing the shortcuts below if the user is typing in the Search/Watchlist input
+            if (document.activeElement.tagName === 'INPUT') return;
+
+            // 2. Watchlist Navigation
+            if (e.key === 'ArrowUp') { e.preventDefault(); cycleStock(-1); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); cycleStock(1); }
+            
+            // 3. Drawing Tools (Alt + Key matches TradingView)
+            if (e.altKey && e.key.toLowerCase() === 'h') { e.preventDefault(); setTool('hline'); }
+            if (e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); setTool('hray'); }
+            if (e.altKey && e.key.toLowerCase() === 't') { e.preventDefault(); setTool('trendline'); }
+            if (e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setTool('fibo'); }
+            if (e.altKey && e.key.toLowerCase() === 'f') { e.preventDefault(); setTool('fibo'); }
+            if (e.altKey && e.key.toLowerCase() === 'e') { e.preventDefault(); setTool('eraser'); }
+            if (e.altKey && e.key.toLowerCase() === 'm') { e.preventDefault(); toggleMagnet(); }
+            
+            // 4. UI & View Toggles
+            if (e.altKey && e.key.toLowerCase() === 'w') { e.preventDefault(); toggleWl(); }
+            if (e.altKey && e.key.toLowerCase() === 'r') { e.preventDefault(); triggerNativeAuto(); } // Reset Chart View
+            if (e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); toggleLog(); } // Toggle Log Scale
+            // --- External Links ---
+            if (e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); openZerodha(); }
+            if (e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); openScreener(); }
+            if (e.altKey && e.key.toLowerCase() === 'v') { e.preventDefault(); openTradingView(); }
+            // 5. Timeframe Switching (1 to 5)
+            if (e.key === '0') { e.preventDefault(); setTimeframe('D'); }
+            if (e.key === '1') { e.preventDefault(); setTimeframe('15m'); }
+            if (e.key === '2') { e.preventDefault(); setTimeframe('75m'); }
+            if (e.key === '4') { e.preventDefault(); setTimeframe('W'); }
+            if (e.key === '5') { e.preventDefault(); setTimeframe('M'); }
+        });
+
+        // --- 4. CHART ENGINE ---
+        const formatCustomDate = (time) => {
+            let d;
+            
+            // If the chart detects a Daily/Weekly timeframe, it passes an object.
+            if (typeof time === 'object' && time.year !== undefined) {
+                // JS Dates are 0-indexed for months, so we subtract 1
+                d = new Date(time.year, time.month - 1, time.day);
+            } else {
+                // If it's an Intraday timeframe, it passes a raw Unix timestamp
+                d = new Date(time * 1000);
+            }
+            
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+            
+            // Output time on the crosshair if viewing an intraday chart (12-hour format)
+            if (currentTimeframe === '15m' || currentTimeframe === '75m') {
+                let hours = d.getHours();
+                const minutes = d.getMinutes().toString().padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                const strHours = hours.toString().padStart(2, '0'); 
+                
+                return `${d.getDate()} ${months[d.getMonth()]} ${strHours}:${minutes} ${ampm}`;
+            }
+            
+            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} '${d.getFullYear().toString().slice(-2)}`;
+        };
+
+        const chart = LightweightCharts.createChart(document.getElementById('tv-chart'), { 
+            layout: { textColor: s_text, background: { type: 'gradient', topColor: s_bg_top, bottomColor: s_bg_bottom } },
+            grid: { vertLines: { color: s_grid }, horzLines: { color: s_grid } },
+            crosshair: { 
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: { color: '#2a2e39', labelBackgroundColor: '#2a2e39' },
+                horzLine: { color: '#2a2e39', labelBackgroundColor: '#2a2e39' }
+            },
+            localization: { timeFormatter: formatCustomDate },
+            rightPriceScale: { borderColor: '#2a2e39', autoScale: true, mode: LightweightCharts.PriceScaleMode.Logarithmic, scaleMargins: { top: 0.15, bottom: 0.15 } }, 
+            timeScale: { borderColor: '#2a2e39', timeVisible: true, rightOffset: 5 }
+        });
+        
+        // --- DYNAMIC PANE FACTORY (PHASE 3 & 5) ---
+        const topChartContainer = document.getElementById('tv-chart');
+        const panesContainer = document.getElementById('panes-container');
+        
+        let dynamicPanes = {}; 
+        let isPaneResizing = false;
+        let isTimeSyncing = false;
+        let isSwappingStock = false; 
+        // Load the permanently saved dragged height from memory, or default to null
+        window.customBottomPct = localStorage.getItem('tv-pane-pct') ? parseFloat(localStorage.getItem('tv-pane-pct')) : null;
+
+        chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
+            if (isTimeSyncing || isSwappingStock || !r) return;
+            isTimeSyncing = true;
+            Object.values(dynamicPanes).forEach(p => {
+                if (!p.chartDiv.classList.contains('sub-hidden')) p.chart.timeScale().setVisibleLogicalRange(r);
+            });
+            isTimeSyncing = false;
+        });
+
+        function alignYAxes() {
+            let maxW = chart.priceScale('right').width();
+            Object.values(dynamicPanes).forEach(p => { maxW = Math.max(maxW, p.chart.priceScale('right').width()); });
+            chart.priceScale('right').applyOptions({ minimumWidth: maxW });
+            Object.values(dynamicPanes).forEach(p => { p.chart.priceScale('right').applyOptions({ minimumWidth: maxW }); });
+            
+            setTimeout(() => {
+                maxW = chart.priceScale('right').width();
+                Object.values(dynamicPanes).forEach(p => { maxW = Math.max(maxW, p.chart.priceScale('right').width()); });
+                chart.priceScale('right').applyOptions({ minimumWidth: maxW });
+                Object.values(dynamicPanes).forEach(p => { p.chart.priceScale('right').applyOptions({ minimumWidth: maxW }); });
+            }, 50); 
+        }
+
+        function toggleCollapsePane(id) {
+            const p = dynamicPanes[id];
+            if (!p) return;
+            const isHidden = p.chartDiv.classList.toggle('sub-hidden');
+            if (isHidden) {
+                p.container.style.flex = '0 0 32px'; 
+            } else {
+                p.container.style.flex = '1 1 0';
+            }
+            window.customBottomPct = null; // Unlocks auto-resizing
+            localStorage.removeItem('tv-pane-pct'); // Forget saved height so it restores to defaults
+            updateTimeScaleVisibility();
+        }
+
+        function createPane(id, titleHtml) {
+            if (dynamicPanes[id]) return dynamicPanes[id];
+
+            // FIX: Force the master container open BEFORE injecting the chart so it never crashes from having 0 height
+            panesContainer.style.display = 'flex';
+            panesContainer.classList.remove('sub-hidden');
+
+            const container = document.createElement('div');
+            container.id = `container-${id}`;
+            container.style.cssText = 'display: flex; flex-direction: column; flex: 1 1 0; min-height: 32px; width: 100%; position: relative; overflow: hidden; border-top: 1px solid var(--ui-border);';
+
+            const resizer = document.createElement('div');
+            resizer.className = 'pane-resizer';
+            resizer.title = "Drag to resize overall pane space, double-click to collapse";
+            resizer.ondblclick = () => toggleCollapsePane(id);
+            resizer.onmousedown = (e) => {
+                isPaneResizing = true;
+                document.body.style.cursor = 'row-resize';
+            };
+
+            const header = document.createElement('div');
+            header.className = 'pane-header';
+            header.style.color = s_text; // FIX: Instantly applies your custom Text & Axis color to new panes
+            header.innerHTML = `
+                <div class="pane-title">
+                    <span>${titleHtml}</span>
+                    <div class="pane-controls">
+                        <button class="pane-btn" onclick="togglePaneEye('${id}', this)" title="Hide Indicator">👁️</button>
+                        <button class="pane-btn close" onclick="closeIndicatorPane('${id}')" title="Remove Pane">✕</button>
+                    </div>
+                </div>
+            `;
+            
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'pane-chart-container';
+            chartDiv.style.cssText = 'flex: 1; outline: none; background: var(--ui-bg-main); position: relative; min-height: 0;';
+            
+            container.appendChild(resizer);
+            container.appendChild(header);
+            container.appendChild(chartDiv);
+            panesContainer.appendChild(container);
+
+            const subChart = LightweightCharts.createChart(chartDiv, {
+                layout: { textColor: s_text, background: { type: 'gradient', topColor: s_bg_top, bottomColor: s_bg_bottom } },
+                grid: { vertLines: { color: s_grid }, horzLines: { color: s_grid } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal, vertLine: { color: '#2a2e39' }, horzLine: { color: '#2a2e39' } },
+                localization: { timeFormatter: formatCustomDate },
+                timeScale: { visible: true, rightOffset: 5 }, 
+                rightPriceScale: { autoScale: true, borderColor: '#2a2e39' }
+            });
+
+            subChart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
+                if (isTimeSyncing || isSwappingStock || !r || chartDiv.classList.contains('sub-hidden')) return;
+                isTimeSyncing = true;
+                chart.timeScale().setVisibleLogicalRange(r);
+                Object.values(dynamicPanes).forEach(p => {
+                    if (p.id !== id && !p.chartDiv.classList.contains('sub-hidden')) {
+                        p.chart.timeScale().setVisibleLogicalRange(r);
+                    }
+                });
+                isTimeSyncing = false;
+            });
+
+            subChart.subscribeCrosshairMove(param => {
+                if (param.time) updateAllLegends(param.time);
+                if (!param.time || param.point.x < 0 || param.point.y < 0) {
+                    chart.clearCrosshairPosition();
+                    Object.values(dynamicPanes).forEach(p => p.chart.clearCrosshairPosition());
+                } else {
+                    chart.setCrosshairPosition(0, param.time, candleSeries);
+                    Object.values(dynamicPanes).forEach(p => {
+                        if (p.id !== id && p.syncSeries && !p.chartDiv.classList.contains('sub-hidden')) {
+                            p.chart.setCrosshairPosition(0, param.time, p.syncSeries);
+                        }
+                    });
+                }
+            });
+
+            chartDiv.addEventListener('mouseenter', () => {
+                subChart.applyOptions({ crosshair: { horzLine: { visible: true, labelVisible: true } } });
+                chart.applyOptions({ crosshair: { horzLine: { visible: false, labelVisible: false } } });
+                Object.values(dynamicPanes).forEach(p => {
+                    if (p.id !== id) p.chart.applyOptions({ crosshair: { horzLine: { visible: false, labelVisible: false } } });
+                });
+            });
+
+            attachDoubleTap(chartDiv);
+            chartDiv.addEventListener('mousemove', checkDrag);
+            chartDiv.addEventListener('wheel', disableAutoVisual);
+            chartDiv.addEventListener('touchmove', disableAutoVisual);
+            chartDiv.addEventListener('dblclick', triggerNativeAuto);
+
+            const paneObj = { id, container, chartDiv, chart: subChart, series: {}, syncSeries: null };
+            dynamicPanes[id] = paneObj;
+            return paneObj;
+        }
+
+        function destroyPane(id) {
+            if (!dynamicPanes[id]) return;
+            const p = dynamicPanes[id];
+            p.chart.remove();
+            panesContainer.removeChild(p.container);
+            delete dynamicPanes[id];
+            alignYAxes();
+            updateTimeScaleVisibility();
+        }
+
+        chart.subscribeCrosshairMove(param => {
+            if (!param.time || param.point.x < 0 || param.point.y < 0) {
+                Object.values(dynamicPanes).forEach(p => p.chart.clearCrosshairPosition());
+            } else {
+                Object.values(dynamicPanes).forEach(p => {
+                    if (p.syncSeries && !p.chartDiv.classList.contains('sub-hidden')) {
+                        p.chart.setCrosshairPosition(0, param.time, p.syncSeries);
+                    }
+                });
+            }
+        });
+
+        document.getElementById('tv-chart').addEventListener('mouseenter', () => {
+            chart.applyOptions({ crosshair: { horzLine: { visible: true, labelVisible: true } } });
+            Object.values(dynamicPanes).forEach(p => {
+                p.chart.applyOptions({ crosshair: { horzLine: { visible: false, labelVisible: false } } });
+            });
+        });
+
+        // Smart Master Resizer: Drags the entire container space, keeping panes equally divided inside
+        document.addEventListener('mousemove', (e) => {
+            if (!isPaneResizing) return;
+            const containerH = document.getElementById('chart-container').clientHeight;
+            const newTopPct = ((e.clientY - 35) / containerH) * 100; 
+            
+            if (newTopPct > 20 && newTopPct < 85) { 
+                window.customBottomPct = 100 - newTopPct;
+                localStorage.setItem('tv-pane-pct', window.customBottomPct); // Permanently save the dragged size
+                topChartContainer.style.flex = `1 1 ${newTopPct}%`;
+                panesContainer.style.flex = `1 1 ${window.customBottomPct}%`;
+                resizeAllCharts();
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isPaneResizing) {
+                isPaneResizing = false;
+                document.body.style.cursor = 'default';
+                resizeAllCharts();
+            }
+        });
+
+        function resizeAllCharts() {
+            const targetW = topChartContainer.clientWidth;
+            if (chart && targetW > 0 && topChartContainer.clientHeight > 0) {
+                chart.resize(targetW, topChartContainer.clientHeight);
+            }
+            Object.values(dynamicPanes).forEach(p => {
+                if (targetW > 0 && p.chartDiv.clientHeight > 0 && !p.chartDiv.classList.contains('sub-hidden')) {
+                    p.chart.resize(targetW, p.chartDiv.clientHeight);
+                }
+            });
+            alignYAxes();
+        }
+
+        function updateTimeScaleVisibility() {
+            const keys = Object.keys(dynamicPanes);
+            let activeCount = 0;
+            let lastVisibleKey = null;
+
+            for (let i = keys.length - 1; i >= 0; i--) {
+                if (!dynamicPanes[keys[i]].chartDiv.classList.contains('sub-hidden')) {
+                    if (!lastVisibleKey) lastVisibleKey = keys[i];
+                    activeCount++;
+                }
+            }
+
+            if (keys.length === 0) {
+                panesContainer.style.display = 'none';
+                topChartContainer.style.flex = '1 1 100%';
+                chart.applyOptions({ timeScale: { visible: true } }); 
+            } else {
+                panesContainer.style.display = 'flex';
+                
+                if (activeCount === 0) {
+                    topChartContainer.style.flex = '1 1 100%';
+                    panesContainer.style.flex = '0 0 auto';
+                    chart.applyOptions({ timeScale: { visible: true } });
+                } else {
+                    // FIX: Use total panes (keys.length) so the master container doesn't shrink.
+                    // When a pane hides, the remaining active panes will now expand into the freed space.
+                    const calcBottomPct = window.customBottomPct || Math.min(20 + ((keys.length - 1) * 10), 45);
+                    topChartContainer.style.flex = `1 1 ${100 - calcBottomPct}%`;
+                    panesContainer.style.flex = `1 1 ${calcBottomPct}%`;
+                    chart.applyOptions({ timeScale: { visible: false } });
+                }
+                
+                keys.forEach(key => {
+                    dynamicPanes[key].chart.applyOptions({ timeScale: { visible: (key === lastVisibleKey) } });
+                });
+            }
+            requestAnimationFrame(() => {
+                resizeAllCharts();
+                setTimeout(resizeAllCharts, 20);
+            });
+        }
+
+        function toggleSubPanesGlobal() {
+            if (Object.keys(dynamicPanes).length === 0) return; 
+            const isHidden = panesContainer.classList.toggle('sub-hidden');
+            
+            if (isHidden) {
+                topChartContainer.style.flex = '1 1 100%';
+                panesContainer.style.display = 'none';
+                chart.applyOptions({ timeScale: { visible: true } }); 
+            } else {
+                updateTimeScaleVisibility();
+            }
+            setTimeout(resizeAllCharts, 20);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.altKey && e.key.toLowerCase() === 'd') { e.preventDefault(); toggleSubPanesGlobal(); }
+        });
+
+        const tvContainer = document.getElementById('tv-chart');
+        
+        function disableAutoVisual() { 
+            document.getElementById('btn-auto').classList.remove('active'); 
+            document.getElementById('btn-reset').style.display = 'flex'; 
+        }
+        
+        let isMouseDown = false;
+        document.addEventListener('mousedown', () => { isMouseDown = true; });
+        document.addEventListener('mouseup', () => { isMouseDown = false; });
+
+        function checkDrag() { if (isMouseDown) disableAutoVisual(); }
+        
+        function attachDoubleTap(container) {
+            if (!container) return;
+            let lastTapTime = 0;
+            let touchMoved = false;
+            let startX = 0;
+            let startY = 0;
+
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    touchMoved = false;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                } else {
+                    touchMoved = true;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    const dx = Math.abs(e.touches[0].clientX - startX);
+                    const dy = Math.abs(e.touches[0].clientY - startY);
+                    if (dx > 8 || dy > 8) touchMoved = true;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', () => {
+                if (touchMoved) return;
+                const now = Date.now();
+                if (now - lastTapTime < 320) {
+                    triggerNativeAuto();
+                    lastTapTime = 0;
+                } else {
+                    lastTapTime = now;
+                }
+            }, { passive: true });
+        }
+
+        tvContainer.addEventListener('mousemove', checkDrag);
+        tvContainer.addEventListener('wheel', disableAutoVisual);
+        tvContainer.addEventListener('touchmove', disableAutoVisual);
+        attachDoubleTap(tvContainer);
+        tvContainer.addEventListener('dblclick', triggerNativeAuto);
+
+        function toggleLog() {
+            const isLog = chart.priceScale('right').options().mode === LightweightCharts.PriceScaleMode.Logarithmic;
+            chart.priceScale('right').applyOptions({ mode: !isLog ? LightweightCharts.PriceScaleMode.Logarithmic : LightweightCharts.PriceScaleMode.Normal });
+            document.getElementById('btn-log').classList.toggle('active', !isLog);
+        }
+
+        let currentBarsToView = 130; 
+        
+        function setDateRange(bars, btnElement) {
+            currentBarsToView = bars;
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            if(btnElement) btnElement.classList.add('active');
+            applyChartView();
+        }
+        
+        function triggerNativeAuto() { 
+            currentBarsToView = 130; // 6 Months
+            // Visually highlight the 6M button
+            document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.range-btn').forEach(b => {
+                if (b.innerText === '6M') b.classList.add('active');
+            });
+            applyChartView();
+        }
+
+        function applyChartView() { 
+            chart.priceScale('right').applyOptions({ autoScale: true }); 
+            Object.values(dynamicPanes).forEach(p => p.chart.priceScale('right').applyOptions({ autoScale: true })); 
+            
+            if(currentBarsToView === 'auto') {
+                document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+                chart.timeScale().resetTimeScale(); 
+                // Force auto-scale onto all panes
+                Object.values(dynamicPanes).forEach(p => p.chart.timeScale().resetTimeScale());
+            } else if(lastChartData.length > 0) {
+                const dataLen = isReplayActive ? replayIndex + 1 : lastChartData.length;
+                const minRange = Math.max(0, currentBarsToView === 99999 ? 0 : dataLen - currentBarsToView);
+                const rangeObj = { from: minRange, to: dataLen + 5 };
+                
+                // Bypass the sync lock by explicitly setting the range on all panes simultaneously
+                chart.timeScale().setVisibleLogicalRange(rangeObj);
+                Object.values(dynamicPanes).forEach(p => {
+                    p.chart.timeScale().setVisibleLogicalRange(rangeObj);
+                });
+            }
+            
+            setTimeout(() => { 
+                document.getElementById('btn-auto').classList.add('active'); 
+                document.getElementById('btn-reset').style.display = 'none'; 
+                alignYAxes(); 
+            }, 50);
+        }
+
+        const cleanEma = { lineWidth: 1, title: '', lastValueVisible: true, priceLineVisible: false, crosshairMarkerVisible: false, visible: emasVisible, autoscaleInfoProvider: () => null };
+        const ema9 = chart.addLineSeries({ color: '#4285f4', ...cleanEma });
+        const ema21 = chart.addLineSeries({ color: '#ffa726', ...cleanEma });
+        const ema50 = chart.addLineSeries({ color: '#ab47bc', ...cleanEma });
+        const ema200 = chart.addLineSeries({ color: '#787b86', ...cleanEma });
+        
+        const ema12 = chart.addLineSeries({ color: '#2962ff', ...cleanEma });
+        const ema26 = chart.addLineSeries({ color: '#f23645', ...cleanEma });
+        
+        const atrSeries = chart.addLineSeries({ color: s_atr_color, lineWidth: 1, lineStyle: 2, lastValueVisible: true, priceLineVisible: false, crosshairMarkerVisible: false, visible: s_show_atr_line, autoscaleInfoProvider: () => null });
+        
+        const mainVolSeries = chart.addHistogramSeries({ 
+            base: 0, 
+            priceFormat: { type: 'volume' }, 
+            priceScaleId: '', 
+            priceLineVisible: false, 
+            lastValueVisible: false, 
+            crosshairMarkerVisible: false,
+            autoscaleInfoProvider: (original) => {
+                const res = original();
+                if (res !== null) res.priceRange.minValue = 0; // Kills inversion
+                return res;
+            }
+        });
+        const mainVolMaSeries = chart.addLineSeries({ 
+            color: '#2962ff', lineWidth: 1, priceScaleId: '', priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null 
+        });
+        chart.priceScale('').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+        
+        document.getElementById('btn-toggle-emas').className = emasVisible ? 'emas-on' : 'emas-off';
+
+        const candleSeries = chart.addCandlestickSeries({ upColor: s_up_b, downColor: s_dn_b, borderVisible: true, borderUpColor: s_up_w, borderDownColor: s_dn_w, wickUpColor: s_up_w, wickDownColor: s_dn_w, priceLineVisible: s_show_priceline });
+
+        let rsiMap = new Map();
+        let candleMap = new Map();
+        let metricsMap = new Map();
+        let rsi14Map = new Map();
+        let macdMap = new Map();
+
+        function updateAllLegends(time) {
+            let t = time;
+            if (!t && lastChartData.length > 0) {
+                t = (isReplayActive ? lastChartData[replayIndex].time : lastChartData[lastChartData.length - 1].time) / 1000;
+            }
+            if (!t) return;
+            
+            const c = candleMap.get(t);
+            if (c) {
+                document.getElementById('leg-o').innerText = c.o.toFixed(2);
+                document.getElementById('leg-h').innerText = c.h.toFixed(2);
+                document.getElementById('leg-l').innerText = c.l.toFixed(2);
+                document.getElementById('leg-c').innerText = c.c.toFixed(2);
+                const pct = c.pc ? ((c.c - c.pc) / c.pc) * 100 : ((c.c - c.o) / c.o) * 100;
+                const pctEl = document.getElementById('leg-pct');
+                pctEl.innerText = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+                pctEl.style.color = pct >= 0 ? '#089981' : '#f23645';
+            }
+            
+            const vol = volumeMap.get(t);
+            const formattedVol = vol ? numFormat.format(vol) : "-";
+            document.getElementById('leg-v').innerText = formattedVol;
+            if (document.getElementById('leg-sub-vol')) document.getElementById('leg-sub-vol').innerText = formattedVol;
+            if (document.getElementById('leg-sub-vol-pane')) document.getElementById('leg-sub-vol-pane').innerText = formattedVol;
+            
+            const rsi = rsiMap.get(t);
+            if (document.getElementById('leg-rsi')) document.getElementById('leg-rsi').innerText = (rsi !== undefined && rsi !== null) ? rsi.toFixed(2) : "-";
+
+            const rsi14 = rsi14Map.get(t);
+            if (document.getElementById('leg-rsi14')) {
+                document.getElementById('leg-rsi14').innerText = (rsi14 !== undefined && rsi14 !== null) ? rsi14.toFixed(2) : "-";
+            }
+            
+            const macd = macdMap.get(t);
+            if (document.getElementById('leg-macd')) {
+                document.getElementById('leg-macd').innerText = (macd && macd.macd !== null) ? macd.macd.toFixed(2) : "-";
+                document.getElementById('leg-macdsig').innerText = (macd && macd.sig !== null) ? macd.sig.toFixed(2) : "-";
+                const histEl = document.getElementById('leg-macdhist');
+                histEl.innerText = (macd && macd.hist !== null) ? macd.hist.toFixed(2) : "-";
+                histEl.style.color = (macd && macd.hist !== null && macd.hist >= 0) ? '#089981' : '#f23645';
+            }
+
+            const m = metricsMap.get(t);
+            const isMtfActive = activeIndicators.includes('mtf_core');
+            if (m) {
+                document.getElementById('dash-sig').innerText = isMtfActive ? (m.sig || "-") : "-";
+                document.getElementById('dash-sig').style.color = isMtfActive ? (m.sigCol || "#d1d4dc") : "#d1d4dc";
+                document.getElementById('dash-bp').innerText = isMtfActive && m.bp !== undefined && m.bp !== null ? m.bp.toFixed(0) : "-";
+                document.getElementById('dash-rvol').innerText = isMtfActive && m.rvol !== undefined && m.rvol !== null ? m.rvol.toFixed(2) : "-";
+                document.getElementById('dash-ud').innerText = isMtfActive && m.ud !== undefined && m.ud !== null ? m.ud.toFixed(2) : "-";
+            }
+        }
+        
+        chart.subscribeCrosshairMove(p => updateAllLegends(p.time));
+
+        function toggleReplay() {
+            if (isReplaySelecting || isReplayActive) {
+                exitReplayMode();
+            } else {
+                if (!lastChartData || lastChartData.length === 0) return;
+                setTool(null); 
+                isReplaySelecting = true;
+                const btn = document.getElementById('btn-replay');
+                btn.innerText = "🖱";
+                btn.title = "Click Candle to Start";
+                btn.style.backgroundColor = "#2962ff";
+                btn.style.color = "#ffffff";
+                document.getElementById('tv-chart').style.cursor = 'crosshair'; 
+            }
+        }
+
+        function exitReplayMode() {
+            stopReplayPlayback();
+            isReplaySelecting = false; isReplayActive = false; replayIndex = -1;
+            
+            const btn = document.getElementById('btn-replay');
+            btn.innerText = "⏮"; btn.title = "Replay Mode";
+            btn.style.backgroundColor = "transparent"; btn.style.color = "#2962ff";
+            btn.style.display = "inline-block";
+            
+            document.getElementById('btn-replay-play').style.display = "none";
+            document.getElementById('btn-replay-step').style.display = "none";
+            document.getElementById('btn-replay-exit').style.display = "none";
+            document.getElementById('tv-chart').style.cursor = 'default';
+            
+            if (lastChartData && lastChartData.length > 0) {
+                renderChartState(lastChartData); applyChartView(); 
+            }
+        }
+
+        function stepReplayForward() {
+            if (!isReplayActive) return;
+            if (replayIndex < lastChartData.length - 1) {
+                replayIndex++;
+                renderChartState(lastChartData.slice(0, replayIndex + 1));
+                chart.timeScale().scrollToPosition(0, false);
+            } else {
+                exitReplayMode();
+            }
+        }
+
+        function togglePlayPause() {
+            if (!isReplayActive) return;
+            if (replayTimer) stopReplayPlayback(); else startReplayPlayback();
+        }
+
+        function startReplayPlayback() {
+            if (replayTimer) clearInterval(replayTimer);
+            const playBtn = document.getElementById('btn-replay-play');
+            playBtn.innerText = "⏸"; playBtn.title = "Pause (Spacebar)"; playBtn.style.color = "#ff9800";
+            
+            replayTimer = setInterval(() => {
+                if (replayIndex < lastChartData.length - 1) stepReplayForward();
+                else { stopReplayPlayback(); exitReplayMode(); }
+            }, replaySpeedMs);
+        }
+
+        function stopReplayPlayback() {
+            if (replayTimer) { clearInterval(replayTimer); replayTimer = null; }
+            const playBtn = document.getElementById('btn-replay-play');
+            if (playBtn) { playBtn.innerText = "▶"; playBtn.title = "Play (Spacebar)"; playBtn.style.color = "#089981"; }
+        }
+
+        chart.subscribeClick((param) => {
+            if (isReplaySelecting && param.time) {
+                let targetIdx = lastChartData.findIndex(d => (d.time / 1000) === param.time);
+                if (targetIdx !== -1) {
+                    replayIndex = targetIdx; isReplaySelecting = false; isReplayActive = true;
+                    
+                    document.getElementById('btn-replay').style.display = "none";
+                    document.getElementById('btn-replay-play').style.display = "inline-block";
+                    document.getElementById('btn-replay-step').style.display = "inline-block";
+                    document.getElementById('btn-replay-exit').style.display = "inline-block";
+                    document.getElementById('tv-chart').style.cursor = 'default';
+                    
+                    renderChartState(lastChartData.slice(0, replayIndex + 1));
+                    chart.timeScale().scrollToPosition(0, false);
+                }
+            }
+        });
+
+        let activeTool = null, activeDrawings = [], clickState = 0, tempDrawing = null;
+        let isMagnet = localStorage.getItem('tv-magnet-mode') === 'true'; 
+        let measureStart = null; 
+
+        function toggleMagnet() {
+            isMagnet = !isMagnet;
+            document.getElementById('btn-magnet').classList.toggle('active', isMagnet);
+            localStorage.setItem('tv-magnet-mode', isMagnet);
+        }
+        function setTool(tool) {
+            activeTool = activeTool === tool ? null : tool;
+            document.querySelectorAll('.t-btn').forEach(b => {
+                if (b.id !== 'btn-magnet') b.classList.remove('active');
+            });
+            if(activeTool) document.getElementById('btn-' + activeTool).classList.add('active');
+            else document.getElementById('btn-crosshair').classList.add('active');
+            
+            document.getElementById('chart-container').style.cursor = activeTool ? 'crosshair' : 'default';
+            clickState = 0; tempDrawing = null;
+        }
+        
+        function saveDrawingsToStorage() {
+            let serialized = [];
+            activeDrawings.forEach(d => {
+                if(d.type === 'hline') serialized.push({ type: 'hline', price: d.obj.options().price, groupId: d.groupId });
+                else serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId });
+            });
+            allSavedDrawings[currentSymbol] = serialized;
+            localStorage.setItem('tv-drawings-v1', JSON.stringify(allSavedDrawings));
+        }
+
+        function restoreDrawingsForSymbol() {
+            const saved = allSavedDrawings[currentSymbol];
+            if(!saved) return;
+            saved.forEach(d => {
+                if(d.type === 'hline') {
+                    const pl = candleSeries.createPriceLine({ price: d.price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
+                    activeDrawings.push({ type: 'hline', obj: pl, groupId: d.groupId });
+                } else {
+                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false });
+                    ls.setData(d.data);
+                    activeDrawings.push({ type: d.type, obj: ls, groupId: d.groupId });
+                }
+            });
+        }
+
+        function clearDrawings() {
+            activeDrawings.forEach(d => { if (d.type === 'hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
+            activeDrawings = []; setTool(null); saveDrawingsToStorage();
+        }
+        
+        function undoLastDrawing() {
+            if (activeDrawings.length === 0) return;
+            const last = activeDrawings.pop();
+            if (last.type === 'hline') candleSeries.removePriceLine(last.obj); else chart.removeSeries(last.obj);
+            setTool(null); saveDrawingsToStorage();
+        }
+
+        function applyMagnet(time, price) {
+            if (!isMagnet || !time) return { time, price };
+            const c = candleMap.get(time);
+            if (!c) return { time, price };
+            const vals = [c.o, c.h, c.l, c.c];
+            let closestPrice = vals[0];
+            let minDiff = Math.abs(vals[0] - price);
+            for(let i=1; i<4; i++) {
+                const diff = Math.abs(vals[i] - price);
+                if(diff < minDiff) { minDiff = diff; closestPrice = vals[i]; }
+            }
+            return { time, price: closestPrice };
+        }
+
+        document.getElementById('chart-container').addEventListener('mousedown', (e) => {
+            if (isReplaySelecting) return; 
+            if (!activeTool || lastChartData.length === 0) {
+                if (e.shiftKey) {
+                    const rect = document.getElementById('tv-chart').getBoundingClientRect();
+                    const time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
+                    const price = candleSeries.coordinateToPrice(e.clientY - rect.top);
+                    if (time && price) {
+                        measureStart = { x: e.clientX - rect.left, y: e.clientY - rect.top, time, price };
+                        const overlay = document.getElementById('measure-overlay');
+                        overlay.style.width = '0px';
+                        overlay.style.height = '0px';
+                        overlay.style.left = measureStart.x + 'px';
+                        overlay.style.top = measureStart.y + 'px';
+                        overlay.style.display = 'block';
+                        document.getElementById('measure-badge').style.display = 'none'; 
+                    }
+                    return; 
+                } else if (measureStart) {
+                    measureStart = null;
+                    document.getElementById('measure-overlay').style.display = 'none';
+                    document.getElementById('measure-badge').style.display = 'none';
+                    return; 
+                }
+            }
+
+            if (!activeTool || lastChartData.length === 0) return;
+            const rect = document.getElementById('tv-chart').getBoundingClientRect();
+            let time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
+            let price = candleSeries.coordinateToPrice(e.clientY - rect.top);
+            if (!time || !price) return;
+            
+            if (activeTool === 'eraser') {
+                const threshold = Math.abs(candleSeries.coordinateToPrice(e.clientY) - candleSeries.coordinateToPrice(e.clientY + 10)); 
+                let toDeleteIdx = -1;
+                for (let i = activeDrawings.length - 1; i >= 0; i--) {
+                    const d = activeDrawings[i];
+                    if (d.type === 'hline') {
+                        if (Math.abs(d.obj.options().price - price) < threshold) { toDeleteIdx = i; break; }
+                    } else if (d.type === 'hray') {
+                        const data = d.obj.data();
+                        if (data.length > 0 && time >= data[0].time && Math.abs(data[0].value - price) < threshold) { toDeleteIdx = i; break; }
+                    } else if (d.type === 'trendline' || d.type === 'fibo') {
+                        const data = d.obj.data();
+                        if (data.length === 2) {
+                            const t1 = data[0].time, p1 = data[0].value, t2 = data[1].time, p2 = data[1].value;
+                            if ((time >= t1 && time <= t2) || (time >= t2 && time <= t1)) {
+                                const interpPrice = t1 !== t2 ? p1 + ((time - t1) / (t2 - t1)) * (p2 - p1) : p1;
+                                if (Math.abs(interpPrice - price) < threshold) { toDeleteIdx = i; break; }
+                            }
+                        }
+                    }
+                }
+                
+                if (toDeleteIdx > -1) {
+                    const target = activeDrawings[toDeleteIdx];
+                    if (target.groupId) {
+                        const toRemove = activeDrawings.filter(d => d.groupId === target.groupId);
+                        toRemove.forEach(d => { if(d.type==='hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
+                        activeDrawings = activeDrawings.filter(d => d.groupId !== target.groupId);
+                    } else {
+                        if(target.type === 'hline') candleSeries.removePriceLine(target.obj); else chart.removeSeries(target.obj);
+                        activeDrawings.splice(toDeleteIdx, 1);
+                    }
+                    saveDrawingsToStorage();
+                }
+                return; 
+            }
+
+            const snapped = applyMagnet(time, price);
+            time = snapped.time; price = snapped.price;
+
+            const lastTime = lastChartData[lastChartData.length-1].time;
+            const groupId = Date.now(); 
+
+            if (activeTool === 'hline') {
+                const pl = candleSeries.createPriceLine({ price: price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
+                activeDrawings.push({ type: 'hline', obj: pl, groupId: groupId }); setTool(null); saveDrawingsToStorage();
+            } else if (activeTool === 'hray') {
+                const ls = chart.addLineSeries({ color: '#131722', lineWidth: 1, lastValueVisible: true, priceLineVisible: false, autoscaleInfoProvider: () => null });
+                ls.setData([{time: time, value: price}, {time: lastTime + (86400*365), value: price}]); 
+                activeDrawings.push({ type: 'hray', obj: ls, groupId: groupId }); setTool(null); saveDrawingsToStorage();
+            } else if (activeTool === 'trendline') {
+                if (clickState === 0) {
+                    const ls = chart.addLineSeries({ color: '#131722', lineWidth: 1, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
+                    tempDrawing = { series: ls, t1: time, p1: price, groupId: groupId };
+                    activeDrawings.push({ type: 'trendline', obj: ls, groupId: groupId }); clickState = 1;
+                } else { clickState = 0; tempDrawing = null; setTool(null); saveDrawingsToStorage(); }
+            } else if (activeTool === 'fibo') {
+                if (clickState === 0) { tempDrawing = { t1: time, p1: price, groupId: groupId }; clickState = 1; } 
+                else {
+                    const t1 = Math.min(tempDrawing.t1, time), diff = tempDrawing.p1 - price;
+                    [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1].forEach((lvl, i) => {
+                        const ls = chart.addLineSeries({ color: ['#787b86', '#f23645', '#ff9800', '#089981', '#089981', '#2962ff', '#787b86'][i], lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
+                        ls.setData([{time: t1, value: tempDrawing.p1 - (diff * lvl)}, {time: lastTime + (86400*365), value: tempDrawing.p1 - (diff * lvl)}]);
+                        activeDrawings.push({ type: 'fibo', obj: ls, groupId: tempDrawing.groupId });
+                    });
+                    clickState = 0; tempDrawing = null; setTool(null); saveDrawingsToStorage();
+                }
+            }
+        });
+
+        document.getElementById('chart-container').addEventListener('mousemove', (e) => {
+            if (measureStart) {
+                const rect = document.getElementById('tv-chart').getBoundingClientRect();
+                let currX = e.clientX - rect.left;
+                let currY = e.clientY - rect.top;
+                
+                if (currX < 0 || currX > rect.width || currY < 0 || currY > rect.height) return;
+
+                const currTime = chart.timeScale().coordinateToTime(currX);
+                const currPrice = candleSeries.coordinateToPrice(currY);
+
+                if (currTime && currPrice) {
+                    const overlay = document.getElementById('measure-overlay');
+                    const badge = document.getElementById('measure-badge');
+                    
+                    if (badge.style.display !== 'block') badge.style.display = 'block';
+
+                    const left = Math.min(measureStart.x, currX);
+                    const top = Math.min(measureStart.y, currY);
+                    const width = Math.abs(currX - measureStart.x);
+                    const height = Math.abs(currY - measureStart.y);
+
+                    overlay.style.left = left + 'px';
+                    overlay.style.top = top + 'px';
+                    overlay.style.width = width + 'px';
+                    overlay.style.height = height + 'px';
+
+                    const priceDiff = currPrice - measureStart.price;
+                    const pctDiff = (priceDiff / measureStart.price) * 100;
+
+                    let barsDiff = 0;
+                    const dataToUse = isReplayActive ? lastChartData.slice(0, replayIndex + 1) : lastChartData;
+                    const startIdx = dataToUse.findIndex(d => (d.time/1000) === measureStart.time);
+                    const currIdx = dataToUse.findIndex(d => (d.time/1000) === currTime);
+                    if (startIdx > -1 && currIdx > -1) barsDiff = Math.abs(currIdx - startIdx);
+
+                    const msDiff = Math.abs(currTime - measureStart.time) * 1000;
+                    const daysDiff = Math.round(msDiff / (1000 * 60 * 60 * 24));
+
+                    const sign = priceDiff >= 0 ? '+' : '';
+                    const color = priceDiff >= 0 ? '#089981' : '#f23645';
+                    const bgColor = priceDiff >= 0 ? 'rgba(8, 153, 129, 0.1)' : 'rgba(242, 54, 69, 0.1)';
+
+                    badge.style.background = color;
+                    overlay.style.borderColor = color;
+                    overlay.style.backgroundColor = bgColor;
+
+                    badge.innerHTML = `${sign}${pctDiff.toFixed(2)}% (${sign}${priceDiff.toFixed(2)})<br>${barsDiff} Bars, ${daysDiff} Days`;
+
+                    let badgeX = currX + 15;
+                    let badgeY = currY + 15;
+                    if (badgeX + 130 > rect.width) badgeX = currX - 145;
+                    if (badgeY + 40 > rect.height) badgeY = currY - 50;
+
+                    badge.style.left = badgeX + 'px';
+                    badge.style.top = badgeY + 'px';
+                }
+                return;
+            }
+
+            if (activeTool === 'trendline' && clickState === 1 && tempDrawing) {
+                const rect = document.getElementById('chart-container').getBoundingClientRect();
+                let time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
+                let price = candleSeries.coordinateToPrice(e.clientY - rect.top);
+                if (time && price && time !== tempDrawing.t1) {
+                    const snapped = applyMagnet(time, price);
+                    let data = snapped.time > tempDrawing.t1 ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: snapped.time, value: snapped.price }] : [{ time: snapped.time, value: snapped.price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
+                    tempDrawing.series.setData(data);
+                }
+            }
+        });
+
+        let axisMarkers = []; 
+        
+        function clearChartData(msg) {
+            document.getElementById('title-text').innerText = msg;
+            document.getElementById('company-name').innerText = "-";
+            
+            candleSeries.setData([]); ema9.setData([]); ema21.setData([]); ema50.setData([]); ema200.setData([]); atrSeries.setData([]);
+            candleSeries.setMarkers([]);
+            
+            if (typeof ema12 !== 'undefined') { ema12.setData([]); ema26.setData([]); }
+            if (typeof mainVolSeries !== 'undefined') { mainVolSeries.setData([]); mainVolSeries.setMarkers([]); }
+            if (typeof mainVolMaSeries !== 'undefined') { mainVolMaSeries.setData([]); }
+            
+            axisMarkers.forEach(series => chart.removeSeries(series)); 
+            axisMarkers = [];
+            
+            volumeMap.clear(); rsiMap.clear(); candleMap.clear(); rsi14Map.clear(); macdMap.clear(); metricsMap.clear();
+            lastChartData = [];
+            
+            document.getElementById('leg-o').innerText = "0.00"; document.getElementById('leg-h').innerText = "0.00";
+            document.getElementById('leg-l').innerText = "0.00"; document.getElementById('leg-c').innerText = "0.00";
+            document.getElementById('leg-v').innerText = "-"; document.getElementById('leg-pct').innerText = "0.00%";
+            document.getElementById('dash-sig').innerText = "-";
+            
+            document.title = "Hafs Terminal"; 
+            clearDrawings();
+            
+            // Nuke dynamic panes entirely to prevent infinite-loop sync crashes
+            Object.keys(dynamicPanes).forEach(id => {
+                dynamicPanes[id].chart.remove();
+            });
+            dynamicPanes = {};
+            document.getElementById('panes-container').innerHTML = '';
+            updateTimeScaleVisibility();
+        }
+
+        function renderChartState(dataToRender) {
+            if (!dataToRender || dataToRender.length === 0) return;
+            
+            isSwappingStock = true; // Lock timescale sync
+            
+            const isMtfActive = activeIndicators.includes('mtf_core');
+            const candles = [], e9 = [], e21 = [], e50 = [], e200 = [], markers = [], atrData = [];
+            let prevD = null, prevW = null, prevM = null;
+            let active_D = null, active_W = null, active_M = null;
+            let lastRow = dataToRender[dataToRender.length - 1];
+
+            const rsiData = [], volData = [], volMarkers = []; 
+            const simpleVolData = [], customVolMainData = [], rsi14Data = [], macdData = [], macdSigData = [], macdHistData = [];
+            const e12 = [], e26 = [];
+            
+            rsiMap.clear(); candleMap.clear(); metricsMap.clear(); rsi14Map.clear(); macdMap.clear(); volumeMap.clear();
+            
+            let prevClose = null;
+            let prevMacdHist = 0;
+            let atrWasActive = false; 
+
+            dataToRender.forEach(d => {
+                const time = d.time / 1000; 
+                const isBull = d.close >= d.open;
+                
+                candles.push({ 
+                    time, open: d.open, high: d.high, low: d.low, close: d.close,
+                    color: isMtfActive ? (d.vbcb_color || undefined) : undefined, 
+                    borderColor: isBull ? s_up_w : s_dn_w, 
+                    wickColor: isBull ? s_up_w : s_dn_w
+                });
+
+                candleMap.set(time, {o: d.open, h: d.high, l: d.low, c: d.close, pc: prevClose});
+                prevClose = d.close;
+
+                metricsMap.set(time, { sig: d.dash_signal, sigCol: d.dash_sig_col, bp: d.bp_score, rvol: d.rvol, ud: d.ud_ratio });
+                if(d.volume !== undefined) volumeMap.set(time, d.volume);
+                
+                if (d.rsi_2 !== undefined && d.rsi_2 !== null) { rsiMap.set(time, d.rsi_2); rsiData.push({ time, value: d.rsi_2 }); }
+            
+            if (isMtfActive || activeIndicators.includes('emas')) {
+                if (d.ema_9 !== undefined && d.ema_9 !== null) e9.push({ time, value: d.ema_9 });
+                if (d.ema_21 !== undefined && d.ema_21 !== null) e21.push({ time, value: d.ema_21 });
+                if (d.ema_50 !== undefined && d.ema_50 !== null) e50.push({ time, value: d.ema_50 });
+                if (d.ema_200 !== undefined && d.ema_200 !== null) e200.push({ time, value: d.ema_200 });
+            }
+            
+            if (d.scaled_vol !== undefined && d.scaled_vol !== null) volData.push({ time, value: d.scaled_vol, color: d.vol_color || '#3C3C3C' });
+            if (d.volume !== undefined) {
+                simpleVolData.push({ time, value: d.volume, color: isBull ? '#089981' : '#f23645' });
+                customVolMainData.push({ time, value: d.volume, color: d.vol_color || '#3C3C3C' });
+            }
+            
+            if (d.ema_12 !== undefined && d.ema_12 !== null) e12.push({ time, value: d.ema_12 });
+            if (d.ema_26 !== undefined && d.ema_26 !== null) e26.push({ time, value: d.ema_26 });
+            
+            if (d.rsi_14 !== undefined && d.rsi_14 !== null) { 
+                rsi14Data.push({ time, value: d.rsi_14 }); 
+                rsi14Map.set(time, d.rsi_14);
+            } else { rsi14Data.push({ time }); }
+            
+            if (d.macd !== undefined && d.macd !== null) {
+                macdData.push({ time, value: d.macd });
+                macdSigData.push({ time, value: d.macd_sig });
+                let histColor = '#26a69a';
+                // Uses 35% opacity for strong moves, and 10% opacity for weak moves
+                if (d.macd_hist >= 0) histColor = d.macd_hist > prevMacdHist ? 'rgba(38, 166, 154, 0.60)' : 'rgba(38, 166, 154, 0.25)';
+                else histColor = d.macd_hist < prevMacdHist ? 'rgba(242, 54, 69, 0.60)' : 'rgba(242, 54, 69, 0.25)';
+                macdHistData.push({ time, value: d.macd_hist, color: histColor });
+                macdMap.set(time, { macd: d.macd, sig: d.macd_sig, hist: d.macd_hist });
+                prevMacdHist = d.macd_hist;
+            } else {
+                macdData.push({ time });
+                macdSigData.push({ time });
+                macdHistData.push({ time });
+            }
+
+            if (isMtfActive && d.trail_sl !== undefined && d.trail_sl !== null) { 
+                    const segmentColor = atrWasActive ? s_atr_color : 'transparent';
+                    atrData.push({ time: time, value: d.trail_sl, color: segmentColor }); 
+                    atrWasActive = true;
+                } else {
+                    atrData.push({ time: time, value: d.close, color: 'transparent' }); 
+                    atrWasActive = false;
+                }
+
+                if (d.vol_color === '#FF00FF') volMarkers.push({ time, position: 'aboveBar', color: '#ff66ff', shape: 'text', text: 'HVE', size: 0.8 });
+                else if (d.vol_color === '#800080') volMarkers.push({ time, position: 'aboveBar', color: '#e040fb', shape: 'text', text: 'HVY', size: 0.8 }); 
+                else if (d.vol_color === '#800000') volMarkers.push({ time, position: 'aboveBar', color: '#ff5252', shape: 'text', text: 'HVQ', size: 0.8 });
+
+                if (d.d_high !== null && d.d_high !== prevD) active_D = { price: d.d_high, time: time };
+                if (d.d_high === null) active_D = null;
+                if (d.w_high !== null && d.w_high !== prevW) active_W = { price: d.w_high, time: time };
+                if (d.w_high === null) active_W = null;
+                if (d.m_high !== null && d.m_high !== prevM) active_M = { price: d.m_high, time: time };
+                if (d.m_high === null) active_M = null;
+
+            if (isMtfActive) {
+                if (d.marker === 'BUY_D' && s_show_buy) markers.push({ time, position: 'belowBar', color: '#2196f3', shape: 'arrowUp', text: s_show_sig_text ? 'BUY' : undefined });
+                else if (d.marker === 'BUY_W' && s_show_buy) markers.push({ time, position: 'belowBar', color: '#ffb300', shape: 'arrowUp', text: s_show_sig_text ? 'MACRO' : undefined });
+                else if (d.marker === 'BUY_COIL' && s_show_buy) markers.push({ time, position: 'belowBar', color: '#fdd835', shape: 'arrowUp', text: s_show_sig_text ? 'COIL' : undefined });
+                else if (d.marker === 'ADD' && s_show_add) markers.push({ time, position: 'belowBar', color: '#4caf50', shape: 'arrowUp', text: s_show_sig_text ? 'ADD' : undefined });
+                else if (d.marker === 'EXIT_1' && s_show_half) markers.push({ time, position: 'aboveBar', color: '#fb8c00', shape: 'arrowDown', text: s_show_sig_text ? 'HALF' : undefined });
+                else if (d.marker === 'EXIT_2' && s_show_full) markers.push({ time, position: 'aboveBar', color: '#e53935', shape: 'arrowDown', text: s_show_sig_text ? 'EXIT' : undefined });
+            }
+            
+            if (activeIndicators.includes('ema_cross')) {
+                if (d.bull_cross) markers.push({ time, position: 'belowBar', color: '#2962ff', shape: 'arrowUp', text: s_show_sig_text ? 'CROSS' : undefined });
+                if (d.bear_cross) markers.push({ time, position: 'aboveBar', color: '#f23645', shape: 'arrowDown', text: s_show_sig_text ? 'CROSS' : undefined });
+            }
+                
+                prevD = d.d_high; prevW = d.w_high; prevM = d.m_high;
+            });
+            
+            const getWickTime = (anchorPrice, activationTime) => {
+                let startIndex = dataToRender.findIndex(d => (d.time / 1000) === activationTime);
+                if (startIndex === -1) return activationTime;
+                let limit = Math.max(0, startIndex - 40); 
+                for (let i = startIndex; i >= limit; i--) { if (Math.abs(dataToRender[i].high - anchorPrice) < 0.001) return dataToRender[i].time / 1000; }
+                return activationTime;
+            };
+            
+            axisMarkers.forEach(series => chart.removeSeries(series)); axisMarkers = [];
+            
+            const makeRay = (price, wickTime, color, tfLevel) => {
+                if (price && wickTime) {
+                    if (tfLevel === 'D' && (currentTimeframe === 'W' || currentTimeframe === 'M')) return;
+                    if (tfLevel === 'W' && currentTimeframe === 'M') return;
+                    
+                    const raySeries = chart.addLineSeries({ color: color, lineWidth: s_ray_width, lineStyle: LightweightCharts.LineStyle.Solid, lastValueVisible: true, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+                    const rayData = [];
+                    dataToRender.forEach(d => { if (d.time / 1000 >= wickTime) rayData.push({ time: d.time / 1000, value: price }); });
+                    
+                    let lastT = dataToRender[dataToRender.length-1].time / 1000;
+                    rayData.push({ time: lastT + (86400 * 30), value: price }); 
+                    raySeries.setData(rayData); axisMarkers.push(raySeries);
+                }
+            };
+
+            if (isMtfActive) {
+                if (active_D) { let wick = getWickTime(active_D.price, active_D.time); markers.push({ time: wick, position: 'aboveBar', color: '#2962ff', shape: 'text', text: `D: ${active_D.price.toFixed(2)}` }); makeRay(active_D.price, wick, '#2962ff', 'D'); }
+                if (active_W) { let wick = getWickTime(active_W.price, active_W.time); markers.push({ time: wick, position: 'aboveBar', color: '#089981', shape: 'text', text: `𝗪: ${active_W.price.toFixed(2)}` }); makeRay(active_W.price, wick, '#089981', 'W'); }
+                if (active_M) { let wick = getWickTime(active_M.price, active_M.time); markers.push({ time: wick, position: 'aboveBar', color: '#f23645', shape: 'text', text: `𝗠: ${active_M.price.toFixed(2)}` }); makeRay(active_M.price, wick, '#f23645', 'M'); }
+            }
+
+            if (isMtfActive && s_show_sz && lastRow.supply_zones && lastRow.supply_zones.length > 0) {
+                lastRow.supply_zones.forEach((zone, index) => {
+                    const zTime = zone.time / 1000;
+                    const zColor = index === 0 ? '#ff5252' : '#ab47bc'; 
+                    const zLabel = index === 0 ? 'SZ 1' : 'SZ 2';
+                    
+                    const topSeries = chart.addLineSeries({ color: zColor, lineWidth: 1, lineStyle: 2, lastValueVisible: true, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+                    const topData = [];
+                    dataToRender.forEach(d => { if (d.time / 1000 >= zTime) topData.push({ time: d.time / 1000, value: zone.top }); });
+                    topData.push({ time: (lastRow.time / 1000) + (86400 * 30), value: zone.top });
+                    topSeries.setData(topData);
+                    axisMarkers.push(topSeries);
+                    
+                    const botSeries = chart.addLineSeries({ color: zColor, lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+                    const botData = [];
+                    dataToRender.forEach(d => { if (d.time / 1000 >= zTime) botData.push({ time: d.time / 1000, value: zone.bot }); });
+                    botData.push({ time: (lastRow.time / 1000) + (86400 * 30), value: zone.bot });
+                    botSeries.setData(botData);
+                    axisMarkers.push(botSeries);
+                    
+                    markers.push({ time: zTime, position: 'aboveBar', color: zColor, shape: 'text', text: zLabel });
+                });
+            }
+
+            const uniqueMarkers = new Map();
+            markers.forEach(m => {
+                if (uniqueMarkers.has(m.time)) {
+                    let existing = uniqueMarkers.get(m.time);
+                    if (m.text) existing.text = existing.text ? (existing.text + ' + ' + m.text) : m.text;
+                } else {
+                    uniqueMarkers.set(m.time, { ...m });
+                }
+            });
+            const safeMarkers = Array.from(uniqueMarkers.values()).sort((a, b) => a.time - b.time);
+            
+            candleSeries.setData(candles);
+            candleSeries.setMarkers(safeMarkers); 
+            
+            ema9.setData(e9); ema21.setData(e21); ema50.setData(e50); ema200.setData(e200);
+            atrSeries.setData(atrData);
+            
+            const isEmaCross = activeIndicators.includes('ema_cross');
+            ema12.applyOptions({ visible: isEmaCross && emasVisible });
+            ema26.applyOptions({ visible: isEmaCross && emasVisible });
+            ema12.setData(isEmaCross ? e12 : []);
+            ema26.setData(isEmaCross ? e26 : []);
+            
+            if (activeIndicators.includes('vol_custom')) {
+                mainVolSeries.setData(customVolMainData);
+                mainVolSeries.setMarkers([]); 
+            } else if (activeIndicators.includes('vol_simple')) {
+                mainVolSeries.setData(simpleVolData);
+                mainVolSeries.setMarkers([]);
+            } else {
+                mainVolSeries.setData([]);
+                mainVolSeries.setMarkers([]);
+            }
+            
+            document.getElementById('btn-toggle-emas').style.display = 'block';
+            document.getElementById('dashboard').style.display = isMtfActive ? 'block' : 'none';
+
+            if (activeIndicators.includes('vol_rsi')) {
+                const pane = createPane('vol_rsi', 'RSI 2: <span id="leg-rsi" style="color: #ab47bc;">-</span> | Vol: <span id="leg-sub-vol">-</span>');
+                
+                if (!pane.series.vol) {
+                    pane.series.vol = pane.chart.addHistogramSeries({ 
+                        base: 0, // Forces volume bars to perfectly anchor to the bottom 0 line
+                        priceFormat: { type: 'volume' }, 
+                        priceScaleId: '', // Independent invisible scale for Volume
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                        autoscaleInfoProvider: (original) => {
+                            const res = original();
+                            if (res !== null) {
+                                res.priceRange.minValue = 0; 
+                                if (res.priceRange.maxValue <= 0) res.priceRange.maxValue = 10; 
+                            }
+                            return res;
+                        }
+                    });
+                    
+                    // Allow volume to grow up to 90% of the pane so it clearly crosses the RSI 70 line
+                    pane.chart.priceScale('').applyOptions({
+                        scaleMargins: { top: 0.1, bottom: 0 }
+                    });
+                }
+                
+                if (!pane.series.rsi) {
+                    pane.series.rsi = pane.chart.addLineSeries({ 
+                        color: 'rgba(171, 71, 188, 0.8)', 
+                        lineWidth: 1,
+                        priceLineVisible: false,
+                        priceScaleId: 'right', // RSI stays on the visible right axis
+                        autoscaleInfoProvider: () => ({
+                            priceRange: { minValue: 0, maxValue: 100 } // Hard-lock RSI strictly from 0 to 100
+                        })
+                    });
+                    pane.series.rsi.createPriceLine({ price: 70, color: 'rgba(128, 0, 128, 0.5)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+                    pane.series.rsi.createPriceLine({ price: 30, color: 'rgba(128, 0, 128, 0.5)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+                    pane.syncSeries = pane.series.rsi; 
+                }
+                
+                // Remove scale margins since the 0-100 lock handles the boundaries perfectly
+                pane.chart.priceScale('right').applyOptions({ autoScale: true });
+                
+                pane.series.vol.setData(volData); 
+                pane.series.vol.setMarkers(volMarkers); 
+                pane.series.rsi.setData(rsiData);
+            } else { 
+                destroyPane('vol_rsi'); 
+            }
+
+            let volMaData = [];
+            if (activeIndicators.includes('vol_simple')) {
+                dataToRender.forEach(d => {
+                    if (d.vol_ma !== undefined && d.vol_ma !== null) volMaData.push({ time: d.time/1000, value: d.vol_ma });
+                    else volMaData.push({ time: d.time/1000 });
+                });
+                mainVolMaSeries.applyOptions({ visible: true, color: indCfg.macd_col, lineWidth: indCfg.line_width });
+                mainVolMaSeries.setData(volMaData);
+            } else {
+                mainVolMaSeries.applyOptions({ visible: false });
+                mainVolMaSeries.setData([]); // Prevent timestamp overlap crash
+            }
+
+            if (activeIndicators.includes('rsi')) {
+                const pane = createPane('rsi', `RSI ${indCfg.rsi_len}: <span id="leg-rsi14" style="color: ${indCfg.rsi_col};">-</span>`);
+                if (!pane.series.rsi) {
+                    pane.series.rsi = pane.chart.addLineSeries({ color: indCfg.rsi_col, lineWidth: indCfg.line_width, priceLineVisible: false });
+                    pane.series.rsi.createPriceLine({ price: 70, color: '#787b86', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+                    pane.series.rsi.createPriceLine({ price: 30, color: '#787b86', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+                    pane.syncSeries = pane.series.rsi;
+                } else {
+                    pane.series.rsi.applyOptions({ color: indCfg.rsi_col, lineWidth: indCfg.line_width });
+                    pane.container.querySelector('.pane-title span').innerHTML = `RSI ${indCfg.rsi_len}: <span id="leg-rsi14" style="color: ${indCfg.rsi_col};">-</span>`;
+                }
+                pane.series.rsi.setData(rsi14Data);
+            } else { destroyPane('rsi'); }
+
+            if (activeIndicators.includes('macd')) {
+                const sigColor = indCfg.macd_sig_col || '#ff9800'; 
+                
+                // Compact UI: Removes the bulky (12, 26, 9) and shortens the labels
+                const macdTitle = `MACD: <span id="leg-macd" style="color: ${indCfg.macd_col};">-</span> &nbsp;S: <span id="leg-macdsig" style="color: ${sigColor};">-</span> &nbsp;H: <span id="leg-macdhist">-</span>`;
+
+                const pane = createPane('macd', macdTitle);
+                if (!pane.series.hist) {
+                    pane.series.hist = pane.chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false, priceScaleId: 'right' });
+                    pane.series.macd = pane.chart.addLineSeries({ color: indCfg.macd_col, lineWidth: indCfg.line_width, priceLineVisible: false });
+                    pane.series.sig = pane.chart.addLineSeries({ color: sigColor, lineWidth: 1, priceLineVisible: false });
+                    
+                    pane.series.macd.createPriceLine({ 
+                        price: 0, 
+                        color: '#787b86', 
+                        lineWidth: 1, 
+                        lineStyle: 0, 
+                        axisLabelVisible: false 
+                    });
+                    
+                    pane.syncSeries = pane.series.macd;
+                } else {
+                    pane.series.macd.applyOptions({ color: indCfg.macd_col, lineWidth: indCfg.line_width });
+                    pane.series.sig.applyOptions({ color: sigColor }); 
+                    pane.container.querySelector('.pane-title span').innerHTML = macdTitle;
+                }
+                pane.series.hist.setData(macdHistData);
+                pane.series.macd.setData(macdData);
+                pane.series.sig.setData(macdSigData);
+            } else { destroyPane('macd'); }
+            
+            if (activeIndicators.includes('vol_custom_pane')) {
+                const pane = createPane('vol_custom_pane', 'Custom Vol: <span id="leg-sub-vol-pane">-</span>');
+                if (!pane.series.vol) {
+                    pane.series.vol = pane.chart.addHistogramSeries({ 
+                        base: 0, 
+                        priceFormat: { type: 'volume' }, 
+                        priceScaleId: 'right', 
+                        priceLineVisible: false, 
+                        lastValueVisible: true, 
+                        crosshairMarkerVisible: true,
+                        autoscaleInfoProvider: (original) => {
+                            const res = original();
+                            if (res !== null) {
+                                res.priceRange.minValue = 0; // Kills inversion
+                                if (res.priceRange.maxValue <= 0) res.priceRange.maxValue = 10; // Prevents 0 to 0 inversion crash
+                            }
+                            return res;
+                        }
+                    });
+                    pane.chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: { top: 0.1, bottom: 0 } });
+                    pane.syncSeries = pane.series.vol; 
+                }
+                pane.series.vol.setData(customVolMainData);
+                pane.series.vol.setMarkers(volMarkers); 
+            } else { destroyPane('vol_custom_pane'); }
+            
+            if (Object.keys(dynamicPanes).length > 0) {
+                document.getElementById('panes-container').classList.remove('sub-hidden');
+                document.getElementById('panes-container').style.display = 'flex';
+            } else {
+                document.getElementById('panes-container').style.display = 'none';
+            }
+            
+            updateTimeScaleVisibility();
+            updateAllLegends(lastRow.time / 1000);
+            
+            setTimeout(() => { isSwappingStock = false; }, 50);
+        }
+
+        async function loadSymbol(symbol) {
+            currentSymbol = symbol;
+            if (window.innerWidth <= 800 && sidebar.style.width !== '0px') toggleWl(); 
+            renderWl();
+            localStorage.setItem('tv-last-symbol', symbol);
+            
+            // UI Optimization: Leave previous chart visible while fetching for seamless transition
+            document.getElementById('title-text').innerText = `⏳ ${symbol}`;
+            
+            if (isReplayActive || isReplaySelecting) exitReplayMode();
+
+            try {
+                const indsParam = activeIndicators.join(',');
+                const cfgParam = encodeURIComponent(JSON.stringify(indCfg));
+                const response = await fetch(`/api/data/${symbol}?tf=${currentTimeframe}&inds=${indsParam}&cfg=${cfgParam}&v=${cacheVersion}`);
+                if (!response.ok) throw new Error("Invalid Stock");
+                
+                const data = await response.json();
+                if (!data || data.length === 0) throw new Error("Empty Data");
+                
+                document.getElementById('company-name').innerText = data[0].full_name ? data[0].full_name : symbol;
+                
+                lastChartData = data; 
+                renderChartState(lastChartData);
+                
+                document.getElementById('title-text').innerText = `${symbol}`;
+                activeDrawings.forEach(d => { if (d.type === 'hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
+                activeDrawings = []; setTool(null);
+                restoreDrawingsForSymbol();
+                
+                // FIX: Allow flexbox layout and chart resizing to settle before setting logical ranges
+                setTimeout(() => {
+                    resizeAllCharts();
+                    applyChartView();
+                    alignYAxes();
+                }, 60);
+
+                fetchWlData([symbol]);
+                
+            } catch (error) { 
+                console.error("loadSymbol error:", error);
+                clearChartData("INVALID STOCK DATA"); 
+            }
+        }
+        
+        async function init() {
+            const isMobile = window.innerWidth <= 800;
+
+            if (isMobile) {
+                document.getElementById('watchlist').style.width = '0px';
+                document.getElementById('toolbar').style.width = '0px';
+                document.getElementById('toolbar-toggle').innerText = '▶';
+                localStorage.setItem('tv-toolbar-collapsed', 'true');
+                currentBarsToView = 65;
+                document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+                const rangeBtns = document.querySelectorAll('.range-btn');
+                rangeBtns.forEach(btn => { if (btn.innerText === '3M') btn.classList.add('active'); });
+            } else {
+                if (localStorage.getItem('tv-toolbar-collapsed') === 'true') {
+                    document.getElementById('toolbar').style.width = '0px';
+                    document.getElementById('toolbar-toggle').innerText = '▶';
+                }
+            }
+
+            if (isMagnet) document.getElementById('btn-magnet').classList.add('active');
+            
+            applySettings();
+            updateListDropdown();
+            await fetchAvailableStocks(); 
+            updateDatalist();
+            renderWl(); 
+            
+            const lastSym = localStorage.getItem('tv-last-symbol');
+            if (lastSym) loadSymbol(lastSym);
+            else clearChartData("Select a Stock From List");
+            
+            await fetchWlData(); 
+        }
+
+        init();
+        
+    </script>
+</body>
+</html>
