@@ -8,6 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#080808">
     <title>Hafs Terminal</title>
+    <meta name="apple-mobile-web-app-title" content="Hafs Terminal">
+    <meta name="application-name" content="Hafs Terminal">
+    
     
     <!-- Custom Pro Terminal Candlestick Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23131722'/><rect x='33' y='25' width='4' height='55' rx='2' fill='%23f23645'/><rect x='25' y='40' width='20' height='30' rx='4' fill='%23f23645'/><rect x='63' y='15' width='4' height='60' rx='2' fill='%23089981'/><rect x='55' y='25' width='20' height='35' rx='4' fill='%23089981'/></svg>">
@@ -157,8 +160,7 @@
         /* FIX: Removed the muddy shadow for grey backgrounds */
         body:not([data-theme="light"]) .pane-header span { text-shadow: none; }
         
-        .pane-controls { display: flex; opacity: 0; pointer-events: none; transition: opacity 0.2s; gap: 4px; margin-left: 6px; }
-        .pane-title:hover .pane-controls { opacity: 1; pointer-events: auto; }
+        .pane-controls { display: flex; opacity: 1; pointer-events: auto; gap: 4px; margin-left: 6px; }
         
         .pane-btn { background: transparent; border: none; color: #434651; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
         .pane-btn:hover { background: rgba(0,0,0,0.1); color: #131722; }
@@ -2066,10 +2068,13 @@
             resizer.className = 'pane-resizer';
             resizer.title = "Drag to resize overall pane space, double-click to collapse";
             resizer.ondblclick = () => toggleCollapsePane(id);
-            resizer.onmousedown = (e) => {
+                        resizer.onmousedown = (e) => {
                 isPaneResizing = true;
                 document.body.style.cursor = 'row-resize';
             };
+            resizer.addEventListener('touchstart', (e) => {
+                isPaneResizing = true;
+            }, { passive: true });
 
             const header = document.createElement('div');
             header.className = 'pane-header';
@@ -2177,29 +2182,35 @@
             });
         });
 
-        // Smart Master Resizer: Drags the entire container space, keeping panes equally divided inside
-        document.addEventListener('mousemove', (e) => {
+                // Smart Master Resizer: Drags the entire container space (Mouse + Mobile Touch)
+        function handlePaneDrag(clientY) {
             if (!isPaneResizing) return;
             const containerH = document.getElementById('chart-container').clientHeight;
-            const newTopPct = ((e.clientY - 35) / containerH) * 100; 
+            const newTopPct = ((clientY - 35) / containerH) * 100; 
             
             if (newTopPct > 20 && newTopPct < 85) { 
                 window.customBottomPct = 100 - newTopPct;
-                localStorage.setItem('tv-pane-pct', window.customBottomPct); // Permanently save the dragged size
+                localStorage.setItem('tv-pane-pct', window.customBottomPct);
                 topChartContainer.style.flex = `1 1 ${newTopPct}%`;
                 panesContainer.style.flex = `1 1 ${window.customBottomPct}%`;
                 resizeAllCharts();
             }
-        });
+        }
 
-        document.addEventListener('mouseup', () => {
+        document.addEventListener('mousemove', (e) => handlePaneDrag(e.clientY));
+        document.addEventListener('touchmove', (e) => handlePaneDrag(e.touches[0].clientY), { passive: true });
+
+        function stopPaneDrag() {
             if (isPaneResizing) {
                 isPaneResizing = false;
                 document.body.style.cursor = 'default';
                 resizeAllCharts();
             }
-        });
-
+        }
+        
+        document.addEventListener('mouseup', stopPaneDrag);
+        document.addEventListener('touchend', stopPaneDrag);
+        
         function resizeAllCharts() {
             const targetW = topChartContainer.clientWidth;
             if (chart && targetW > 0 && topChartContainer.clientHeight > 0) {
@@ -2239,7 +2250,8 @@
                 } else {
                     // FIX: Use total panes (keys.length) so the master container doesn't shrink.
                     // When a pane hides, the remaining active panes will now expand into the freed space.
-                    const calcBottomPct = window.customBottomPct || Math.min(20 + ((keys.length - 1) * 10), 45);
+                    const calcBottomPct = window.customBottomPct || Math.min(30 + ((keys.length - 1) * 15), 55);
+
                     topChartContainer.style.flex = `1 1 ${100 - calcBottomPct}%`;
                     panesContainer.style.flex = `1 1 ${calcBottomPct}%`;
                     chart.applyOptions({ timeScale: { visible: false } });
