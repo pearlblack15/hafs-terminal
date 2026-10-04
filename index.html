@@ -1292,75 +1292,49 @@
 
         async function fetchAvailableStocks() {
             try {
-                const res = await fetch('/api/stocks');
-                localAvailableStocks = await res.json();
+                const res = await fetch('api/watchlist_summary.json');
+                const data = await res.json();
+                localAvailableStocks = Object.keys(data);
             } catch(e) { console.error("Failed to fetch available stocks:", e); }
         }
 
         // --- FETCH WATCHLIST IN CHUNKS (PREVENTS 414 ERROR AND FREEZES) ---
-        async function fetchWlData(specificSymbols = null) {async function fetchWlData
+        async function fetchWlData(specificSymbols = null) {
+            try {
+                const res = await fetch('api/watchlist_summary.json?v=' + cacheVersion);
+                const apiData = await res.json();
+                
+                // Auto-load all your stocks if opening on a brand new phone/browser
+                if (watchlist.length === 0) {
+                    Object.keys(apiData).forEach(sym => {
+                        watchlist.push({symbol: sym, color: 'none', chg: 0, cmp: 0, signal: '-'});
+                    });
+                    saveWatchlists();
+                    updateDatalist();
+                }
 
-                fetchPromises.push(req);
-            }
-
-            await Promise.all(fetchPromises);
+                watchlist.forEach(w => { 
+                    if (apiData[w.symbol] !== undefined) { 
+                        w.chg = apiData[w.symbol].chg; 
+                        w.cmp = apiData[w.symbol].cmp; 
+                        w.signal = apiData[w.symbol].signal;
+                        w.bp = apiData[w.symbol].bp;
+                        w.rvol = apiData[w.symbol].rvol;
+                        w.ud = apiData[w.symbol].ud;
+                    } 
+                });
+                renderWl();
+                
+                // Click the first stock automatically to paint the chart!
+                if (!currentSymbol && watchlist.length > 0) {
+                    loadSymbol(watchlist[0].symbol);
+                }
+            } catch(e) { console.error("fetchWlData error:", e); }
         }
         
         // --- LIVE SYNC PROGRESS COUNTER ---
         async function syncAllStocks() {
-            const syncBtn = document.getElementById('btn-sync');
-            const originalText = syncBtn.innerText;
-            syncBtn.disabled = true; 
-            syncBtn.style.color = '#ff9800'; 
-
-            try {
-                const res = await fetch('/api/stocks');
-                const stocks = await res.json();
-                // --- ADD THESE 3 LINES ---
-                watchlist.forEach(w => {
-                    if (!stocks.includes(w.symbol)) stocks.push(w.symbol);
-                });
-                // -------------------------
-                if (stocks.length === 0) {
-                    alert("No stocks found in historical_data folder.");
-                    syncBtn.innerText = '🔄 Sync All';
-                    syncBtn.disabled = false;
-                    return;
-                }
-
-                let updatedCount = 0;
-                
-                for (let i = 0; i < stocks.length; i++) {
-                    syncBtn.innerText = `⏳ Syncing ${i + 1}/${stocks.length}...`;
-                    const syncRes = await fetch(`/api/sync/${stocks[i]}`);
-                    const result = await syncRes.json();
-                    if (result.status === 'success') {
-                        updatedCount++;
-                    }
-                }
-                
-                const now = new Date();
-                const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                syncBtn.innerText = `✅ 🔄: ${timeStr}`;
-                syncBtn.style.color = '#089981'; 
-
-                alert(`Sync Complete: Scanned ${stocks.length} stocks. Appended new EOD data for ${updatedCount} stocks.`);
-                
-                // Bust the browser cache ONLY because new data was just downloaded
-                cacheVersion = Date.now(); 
-                
-                await fetchAvailableStocks();
-                await fetchWlData(); 
-                if (currentSymbol) loadSymbol(currentSymbol); 
-
-            } catch (err) {
-                console.error(err);
-                alert(`Failed to sync database. Check Python server console.`);
-                syncBtn.innerText = '🔄 Sync All';
-                syncBtn.style.color = '';
-            } finally {
-                syncBtn.disabled = false;
-            }
+            alert("Syncing is handled automatically by GitHub Actions every weekday at 4:00 PM IST.");
         }
 
         function setSort(mode) {
@@ -3239,9 +3213,7 @@
             if (isReplayActive || isReplaySelecting) exitReplayMode();
 
             try {
-                const indsParam = activeIndicators.join(',');
-                const cfgParam = encodeURIComponent(JSON.stringify(indCfg));
-                const response = await fetch(`/api/data/${symbol}?tf=${currentTimeframe}&inds=${indsParam}&cfg=${cfgParam}&v=${cacheVersion}`);
+                const response = await fetch(`api/data/${symbol}.json?v=${cacheVersion}`);
                 if (!response.ok) throw new Error("Invalid Stock");
                 
                 const data = await response.json();
