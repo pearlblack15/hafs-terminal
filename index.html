@@ -2017,8 +2017,11 @@
         // Load the permanently saved dragged height from memory, or default to null
         window.customBottomPct = localStorage.getItem('tv-pane-pct') ? parseFloat(localStorage.getItem('tv-pane-pct')) : null;
 
+        let customZoomSpan = null; 
+        
         chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
             if (isTimeSyncing || isSwappingStock || !r) return;
+            customZoomSpan = r.to - r.from; 
             isTimeSyncing = true;
             Object.values(dynamicPanes).forEach(p => {
                 if (!p.chartDiv.classList.contains('sub-hidden')) p.chart.timeScale().setVisibleLogicalRange(r);
@@ -2288,9 +2291,21 @@
 
         const tvContainer = document.getElementById('tv-chart');
         
+        let resetTimer = null;
         function disableAutoVisual() { 
             document.getElementById('btn-auto').classList.remove('active'); 
-            document.getElementById('btn-reset').style.display = 'flex'; 
+            const resetBtn = document.getElementById('btn-reset');
+            resetBtn.style.display = 'flex'; 
+            resetBtn.style.opacity = '1';
+            resetBtn.style.transition = 'opacity 0.5s ease';
+            
+            if (resetTimer) clearTimeout(resetTimer);
+            resetTimer = setTimeout(() => {
+                resetBtn.style.opacity = '0';
+                setTimeout(() => {
+                    if (resetBtn.style.opacity === '0') resetBtn.style.display = 'none';
+                }, 500); 
+            }, 2500);
         }
         
         let isMouseDown = false;
@@ -2352,14 +2367,15 @@
         
         function setDateRange(bars, btnElement) {
             currentBarsToView = bars;
+            customZoomSpan = null; 
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             if(btnElement) btnElement.classList.add('active');
             applyChartView();
         }
         
         function triggerNativeAuto() { 
-            currentBarsToView = 130; // 6 Months
-            // Visually highlight the 6M button
+            currentBarsToView = 130; 
+            customZoomSpan = null; 
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.range-btn').forEach(b => {
                 if (b.innerText === '6M') b.classList.add('active');
@@ -2374,14 +2390,13 @@
             if(currentBarsToView === 'auto') {
                 document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
                 chart.timeScale().resetTimeScale(); 
-                // Force auto-scale onto all panes
                 Object.values(dynamicPanes).forEach(p => p.chart.timeScale().resetTimeScale());
             } else if(lastChartData.length > 0) {
                 const dataLen = isReplayActive ? replayIndex + 1 : lastChartData.length;
-                const minRange = Math.max(0, currentBarsToView === 99999 ? 0 : dataLen - currentBarsToView);
+                const barsToShow = customZoomSpan ? customZoomSpan : currentBarsToView;
+                const minRange = Math.max(0, currentBarsToView === 99999 ? 0 : dataLen - barsToShow);
                 const rangeObj = { from: minRange, to: dataLen + 5 };
                 
-                // Bypass the sync lock by explicitly setting the range on all panes simultaneously
                 chart.timeScale().setVisibleLogicalRange(rangeObj);
                 Object.values(dynamicPanes).forEach(p => {
                     p.chart.timeScale().setVisibleLogicalRange(rangeObj);
@@ -2390,7 +2405,7 @@
             
             setTimeout(() => { 
                 document.getElementById('btn-auto').classList.add('active'); 
-                document.getElementById('btn-reset').style.display = 'none'; 
+                document.getElementById('btn-reset').style.opacity = '0';
                 alignYAxes(); 
             }, 50);
         }
