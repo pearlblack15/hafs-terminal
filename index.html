@@ -512,6 +512,9 @@
         <div class="modal-row"><span>Full Exits (Stop Loss)</span><input type="checkbox" id="s-show-full" checked></div>
         <div class="modal-row"><span>ATR Trailing Line</span><input type="checkbox" id="s-show-atr-line" checked></div>
         <div class="modal-row"><span>ATR Line Color</span><input type="color" id="s-atr-color"></div>
+        <div class="modal-row"><span>Daily Line</span><input type="color" id="s-d-color"></div>
+        <div class="modal-row"><span>Weekly Line</span><input type="color" id="s-w-color"></div>
+        <div class="modal-row"><span>Monthly Line</span><input type="color" id="s-m-color"></div>
         <div class="modal-row"><span>Supply Zones</span><input type="checkbox" id="s-show-sz" checked></div>
         <div class="modal-row"><span>Current Price Line</span><input type="checkbox" id="s-show-priceline" checked></div>
         <div class="modal-row"><span>Show Signal Text</span><input type="checkbox" id="s-show-sig-text" checked></div>
@@ -545,7 +548,7 @@
         <div class="modal-row"><span>Standard EMAs (9, 21, 50, 200)</span><input type="checkbox" id="ind-emas"></div>
         <div class="modal-row"><span>EMA Crossover (12/26)</span><input type="checkbox" id="ind-ema-cross"></div>
         <div class="modal-row"><span>Volume + RSI(2) Sub-Pane</span><input type="checkbox" id="ind-vol-rsi"></div>
-        <div class="modal-row"><span>MACD (12, 26, 9)</span><input type="checkbox" id="ind-macd"></div>
+        <div class="modal-row"><span>MACD (10, 26, 9)</span><input type="checkbox" id="ind-macd"></div>
         <div class="modal-row"><span>RSI (14)</span><input type="checkbox" id="ind-rsi"></div>
         <div class="modal-row"><span>Simple Volume Overlay</span><input type="checkbox" id="ind-vol-simple"></div>
         <div class="modal-row"><span>Custom Volume Overlay</span><input type="checkbox" id="ind-vol-custom"></div>
@@ -747,14 +750,15 @@
         let zerodhaTokens = {}; 
         let cacheVersion = Date.now(); // Tracks when data was last updated
 
-        // Ask Python for the tokens when the page loads
+        // --- SMART ENVIRONMENT CHECK ---
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
+
         async function fetchZerodhaTokens() {
             try {
-                const res = await fetch('api/zerodha_tokens.json');
+                const url = isLocal ? '/api/zerodha_tokens' : 'api/zerodha_tokens.json';
+                const res = await fetch(url);
                 zerodhaTokens = await res.json();
-            } catch (err) {
-                console.error("Failed to load Zerodha tokens", err);
-            }
+            } catch (err) { console.error("Failed to load Zerodha tokens", err); }
         }
         
         // Call it right when the app boots up
@@ -880,7 +884,10 @@
         let s_show_half = localStorage.getItem('c_show_half') !== 'false';
         let s_show_full = localStorage.getItem('c_show_full') !== 'false';
         let s_show_atr_line = localStorage.getItem('c_show_atr_line') !== 'false';
-        let s_atr_color = localStorage.getItem('c_atr_color') || '#2962ff'; 
+        let s_atr_color = localStorage.getItem('c_atr_color') || '#2962ff';
+        let s_d_color = localStorage.getItem('c_d_color') || '#0033cc'; // Deep Blue
+        let s_w_color = localStorage.getItem('c_w_color') || '#006400'; // Dark Forest Green
+        let s_m_color = localStorage.getItem('c_m_color') || '#b30000'; // Deep Crimson Red
         let s_show_sz = localStorage.getItem('c_show_sz') !== 'false';
         let s_show_priceline = localStorage.getItem('c_show_priceline') !== 'false';
         let s_show_sig_text = localStorage.getItem('c_show_sig_text') !== 'false';
@@ -989,6 +996,9 @@
             document.getElementById('s-show-full').checked = s_show_full;
             document.getElementById('s-show-atr-line').checked = s_show_atr_line;
             document.getElementById('s-atr-color').value = s_atr_color;
+            document.getElementById('s-d-color').value = '#0033cc';
+            document.getElementById('s-w-color').value = '#006400';
+            document.getElementById('s-m-color').value = '#b30000';
             document.getElementById('s-show-sz').checked = s_show_sz;
             document.getElementById('s-show-priceline').checked = s_show_priceline;
             document.getElementById('s-show-sig-text').checked = s_show_sig_text;
@@ -1002,7 +1012,7 @@
 
         // --- INDICATOR STATE MANAGER (PHASE 1 & 5) ---
         let activeIndicators = [];
-        let indCfg = { rsi_len: 14, rsi_col: '#2962ff', macd_f: 12, macd_s: 26, macd_sig: 9, macd_col: '#2962ff', macd_sig_col: '#ff9800', vol_ma: 50, line_width: 2 }
+        let indCfg = { rsi_len: 14, rsi_col: '#2962ff', macd_f: 10, macd_s: 26, macd_sig: 9, macd_col: '#2962ff', macd_sig_col: '#ff9800', vol_ma: 50, line_width: 2 }
         try {
             activeIndicators = JSON.parse(localStorage.getItem('tv-active-indicators')) || ['mtf_core', 'vol_rsi'];
             const savedCfg = JSON.parse(localStorage.getItem('tv-ind-cfg'));
@@ -1108,6 +1118,9 @@
             s_show_full = document.getElementById('s-show-full').checked;
             s_show_atr_line = document.getElementById('s-show-atr-line').checked;
             s_atr_color = document.getElementById('s-atr-color').value;
+            s_d_color = document.getElementById('s-d-color').value;
+            s_w_color = document.getElementById('s-w-color').value;
+            s_m_color = document.getElementById('s-m-color').value;
             s_show_sz = document.getElementById('s-show-sz').checked;
             s_show_priceline = document.getElementById('s-show-priceline').checked;
             s_show_sig_text = document.getElementById('s-show-sig-text').checked;
@@ -1118,6 +1131,9 @@
             localStorage.setItem('c_show_full', s_show_full);
             localStorage.setItem('c_show_atr_line', s_show_atr_line);
             localStorage.setItem('c_atr_color', s_atr_color);
+            localStorage.setItem('c_d_color', s_d_color);
+            localStorage.setItem('c_w_color', s_w_color);
+            localStorage.setItem('c_m_color', s_m_color);
             localStorage.setItem('c_show_sz', s_show_sz);
             localStorage.setItem('c_show_priceline', s_show_priceline);            
             localStorage.setItem('c_show_sig_text', s_show_sig_text);            
@@ -1146,6 +1162,9 @@
             document.getElementById('s-show-full').checked = true;
             document.getElementById('s-show-atr-line').checked = true;
             document.getElementById('s-atr-color').value = '#2962ff';
+            document.getElementById('s-d-color').value = '#00bfff';
+            document.getElementById('s-w-color').value = '#00e676';
+            document.getElementById('s-m-color').value = '#ff1744';
             document.getElementById('s-show-sz').checked = true;
             document.getElementById('s-show-priceline').checked = true;
             document.getElementById('s-show-sig-text').checked = true;
@@ -1295,47 +1314,111 @@
 
         async function fetchAvailableStocks() {
             try {
-                const res = await fetch('api/watchlist_summary.json');
-                const data = await res.json();
-                localAvailableStocks = Object.keys(data);
+                const url = isLocal ? '/api/stocks' : 'api/watchlist_summary.json';
+                const res = await fetch(url);
+                if (isLocal) {
+                    localAvailableStocks = await res.json();
+                } else {
+                    const data = await res.json();
+                    localAvailableStocks = Object.keys(data);
+                }
             } catch(e) { console.error("Failed to fetch available stocks:", e); }
         }
 
         async function fetchWlData(specificSymbols = null) {
-            try {
-                const res = await fetch('api/watchlist_summary.json?v=' + cacheVersion);
-                const apiData = await res.json();
-                
-                // Auto-load all your stocks if opening on a brand new phone/browser
-                if (watchlist.length === 0) {
-                    Object.keys(apiData).forEach(sym => {
-                        watchlist.push({symbol: sym, color: 'none', chg: 0, cmp: 0, signal: '-'});
-                    });
-                    saveWatchlists();
-                    updateDatalist();
-                }
+            let syms = specificSymbols;
+            if (!syms || syms.length === 0) syms = watchlist.map(w => w.symbol);
+            if (syms.length === 0) return;
 
-                watchlist.forEach(w => { 
-                    if (apiData[w.symbol] !== undefined) { 
-                        w.chg = apiData[w.symbol].chg; 
-                        w.cmp = apiData[w.symbol].cmp; 
-                        w.signal = apiData[w.symbol].signal;
-                        w.bp = apiData[w.symbol].bp;
-                        w.rvol = apiData[w.symbol].rvol;
-                        w.ud = apiData[w.symbol].ud;
-                    } 
-                });
-                renderWl();
-                
-                // Click the first stock automatically to paint the chart!
-                if (!currentSymbol && watchlist.length > 0) {
-                    loadSymbol(watchlist[0].symbol);
+            if (isLocal) {
+                // --- PC LIVE POST CHUNKING ---
+                const chunkSize = 20;
+                const fetchPromises = [];
+                for (let i = 0; i < syms.length; i += chunkSize) {
+                    const chunk = syms.slice(i, i + chunkSize);
+                    const req = fetch('/api/watchlist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbols: chunk, inds: activeIndicators })
+                    })
+                    .then(res => res.json())
+                    .then(apiData => {
+                        watchlist.forEach(w => { 
+                            if (apiData[w.symbol] !== undefined) { 
+                                w.chg = apiData[w.symbol].chg; w.cmp = apiData[w.symbol].cmp; 
+                                w.signal = apiData[w.symbol].signal; w.bp = apiData[w.symbol].bp;
+                                w.rvol = apiData[w.symbol].rvol; w.ud = apiData[w.symbol].ud;
+                            } 
+                        });
+                        renderWl();
+                    }).catch(e => console.error("fetchWlData chunk error:", e));
+                    fetchPromises.push(req);
                 }
-            } catch(e) { console.error("fetchWlData error:", e); }
+                await Promise.all(fetchPromises);
+            } else {
+                // --- CLOUD STATIC JSON ---
+                try {
+                    const res = await fetch('api/watchlist_summary.json?v=' + cacheVersion);
+                    const apiData = await res.json();
+                    
+                    if (watchlist.length === 0) {
+                        Object.keys(apiData).forEach(sym => { watchlist.push({symbol: sym, color: 'none', chg: 0, cmp: 0, signal: '-'}); });
+                        saveWatchlists(); updateDatalist();
+                    }
+                    watchlist.forEach(w => { 
+                        if (apiData[w.symbol] !== undefined) { 
+                            w.chg = apiData[w.symbol].chg; w.cmp = apiData[w.symbol].cmp; 
+                            w.signal = apiData[w.symbol].signal; w.bp = apiData[w.symbol].bp;
+                            w.rvol = apiData[w.symbol].rvol; w.ud = apiData[w.symbol].ud;
+                        } 
+                    });
+                    renderWl();
+                    if (!currentSymbol && watchlist.length > 0) loadSymbol(watchlist[0].symbol);
+                } catch(e) { console.error("fetchWlData error:", e); }
+            }
         }
 
         async function syncAllStocks() {
-            alert("Syncing is handled automatically by GitHub Actions every weekday at 5:07 PM IST.");
+            if (!isLocal) {
+                alert("Syncing is handled automatically by GitHub Actions every weekday at 5:07 PM IST.");
+                return;
+            }
+            
+            // --- PC LIVE SYNCING ---
+            const syncBtn = document.getElementById('btn-sync');
+            syncBtn.disabled = true; syncBtn.style.color = '#ff9800'; 
+
+            try {
+                const res = await fetch('/api/stocks');
+                const stocks = await res.json();
+                watchlist.forEach(w => { if (!stocks.includes(w.symbol)) stocks.push(w.symbol); });
+                
+                if (stocks.length === 0) {
+                    alert("No stocks found in historical_data folder.");
+                    syncBtn.innerText = '🔄 Sync All'; syncBtn.disabled = false;
+                    return;
+                }
+
+                let updatedCount = 0;
+                for (let i = 0; i < stocks.length; i++) {
+                    syncBtn.innerText = `⏳ Syncing ${i + 1}/${stocks.length}...`;
+                    const syncRes = await fetch(`/api/sync/${stocks[i]}`);
+                    const result = await syncRes.json();
+                    if (result.status === 'success') updatedCount++;
+                }
+                
+                const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                syncBtn.innerText = `✅ 🔄: ${timeStr}`; syncBtn.style.color = '#089981'; 
+                alert(`Sync Complete: Scanned ${stocks.length} stocks. Appended new EOD data for ${updatedCount} stocks.`);
+                
+                cacheVersion = Date.now(); 
+                await fetchAvailableStocks(); await fetchWlData(); 
+                if (currentSymbol) loadSymbol(currentSymbol); 
+            } catch (err) {
+                console.error(err);
+                alert(`Failed to sync database. Check Python server console.`);
+                syncBtn.innerText = '🔄 Sync All'; syncBtn.style.color = '';
+            } finally { syncBtn.disabled = false; }
         }
 
         function setSort(mode) {
@@ -2374,11 +2457,17 @@
         }
         
         function triggerNativeAuto() { 
-            currentBarsToView = 130; 
+            // Detect if the user is on a phone (portrait or horizontal)
+            const isMobile = window.innerWidth <= 800 || (window.innerWidth <= 950 && window.innerHeight < window.innerWidth);
+            
+            // Set to 3 Months (65 bars) for mobile, 6 Months (130 bars) for PC
+            currentBarsToView = isMobile ? 65 : 130; 
             customZoomSpan = null; 
+            
             document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.range-btn').forEach(b => {
-                if (b.innerText === '6M') b.classList.add('active');
+                if (isMobile && b.innerText === '3M') b.classList.add('active');
+                else if (!isMobile && b.innerText === '6M') b.classList.add('active');
             });
             applyChartView();
         }
@@ -3012,9 +3101,9 @@
             };
 
             if (isMtfActive) {
-                if (active_D) { let wick = getWickTime(active_D.price, active_D.time); markers.push({ time: wick, position: 'aboveBar', color: '#2962ff', shape: 'text', text: `D: ${active_D.price.toFixed(2)}` }); makeRay(active_D.price, wick, '#2962ff', 'D'); }
-                if (active_W) { let wick = getWickTime(active_W.price, active_W.time); markers.push({ time: wick, position: 'aboveBar', color: '#089981', shape: 'text', text: `𝗪: ${active_W.price.toFixed(2)}` }); makeRay(active_W.price, wick, '#089981', 'W'); }
-                if (active_M) { let wick = getWickTime(active_M.price, active_M.time); markers.push({ time: wick, position: 'aboveBar', color: '#f23645', shape: 'text', text: `𝗠: ${active_M.price.toFixed(2)}` }); makeRay(active_M.price, wick, '#f23645', 'M'); }
+                if (active_D) { let wick = getWickTime(active_D.price, active_D.time); markers.push({ time: wick, position: 'aboveBar', color: s_d_color, shape: 'text', text: `D: ${active_D.price.toFixed(2)}` }); makeRay(active_D.price, wick, s_d_color, 'D'); }
+                if (active_W) { let wick = getWickTime(active_W.price, active_W.time); markers.push({ time: wick, position: 'aboveBar', color: s_w_color, shape: 'text', text: `𝗪: ${active_W.price.toFixed(2)}` }); makeRay(active_W.price, wick, s_w_color, 'W'); }
+                if (active_M) { let wick = getWickTime(active_M.price, active_M.time); markers.push({ time: wick, position: 'aboveBar', color: s_m_color, shape: 'text', text: `𝗠: ${active_M.price.toFixed(2)}` }); makeRay(active_M.price, wick, s_m_color, 'M'); }
             }
 
             if (isMtfActive && s_show_sz && lastRow.supply_zones && lastRow.supply_zones.length > 0) {
@@ -3239,7 +3328,16 @@
             if (isReplayActive || isReplaySelecting) exitReplayMode();
 
             try {
-                const response = await fetch(`api/data/${symbol}.json?v=${cacheVersion}`);
+                let url;
+                if (isLocal) {
+                    const indsParam = activeIndicators.join(',');
+                    const cfgParam = encodeURIComponent(JSON.stringify(indCfg));
+                    url = `/api/data/${symbol}?tf=${currentTimeframe}&inds=${indsParam}&cfg=${cfgParam}&v=${cacheVersion}`;
+                } else {
+                    url = `api/data/${symbol}.json?v=${cacheVersion}`;
+                }
+                
+                const response = await fetch(url);
                 if (!response.ok) throw new Error("Invalid Stock");
                 
                 const data = await response.json();

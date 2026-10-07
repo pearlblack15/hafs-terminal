@@ -34,7 +34,7 @@ def build_static_api():
     summary_data = {}
     # We bake ALL indicators into the JSON so you can toggle them freely on mobile
     all_inds = ['mtf_core', 'emas', 'ema_cross', 'macd', 'rsi', 'vol_simple', 'vol_custom', 'vol_custom_pane', 'vol_rsi']
-    default_cfg = {'rsi_len': 14, 'macd_f': 12, 'macd_s': 26, 'macd_sig': 9, 'vol_ma': 50}
+    default_cfg = {'rsi_len': 14, 'macd_f': 10, 'macd_s': 26, 'macd_sig': 9, 'vol_ma': 50}
 
     # 3. Process each stock
     for symbol in COMPANY_NAMES.keys():
