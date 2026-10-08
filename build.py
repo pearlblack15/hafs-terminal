@@ -65,29 +65,31 @@ def build_static_api():
             filepath = f'temp_historical_data/{symbol}.csv'
             new_data.to_csv(filepath, index=False)
 
-            # Run the MTF Core Math using your modular dispatcher
+            # Run the MTF Core Math for Daily, Weekly, and Monthly
             full_name = COMPANY_NAMES.get(symbol, symbol)
-            chart_data = process_chart_data(filepath, full_name, 'D', False, all_inds, default_cfg)
             
-            # Save the JSON for the chart
-            if chart_data:
-                with open(f'public/api/data/{symbol}.json', 'w') as f:
-                    json.dump(chart_data, f)
-                    
-                # Extract summary for the watchlist side-panel
-                if len(chart_data) >= 2:
-                    last_c = chart_data[-1].get('close', 0)
-                    prev_c = chart_data[-2].get('close', 0)
-                    pct_chg = ((last_c - prev_c) / prev_c) * 100 if prev_c else 0
-                    
-                    summary_data[symbol] = {
-                        'chg': pct_chg,
-                        'cmp': last_c,
-                        'signal': chart_data[-1].get('dash_signal', '-'),
-                        'bp': chart_data[-1].get('bp_score', None),
-                        'rvol': chart_data[-1].get('rvol', None),
-                        'ud': chart_data[-1].get('ud_ratio', None)
-                    }
+            for tf in ['D', 'W', 'M']:
+                chart_data = process_chart_data(filepath, full_name, tf, False, all_inds, default_cfg)
+                
+                # Save a separate JSON for each timeframe (e.g., RELIANCE_D.json, RELIANCE_W.json)
+                if chart_data:
+                    with open(f'public/api/data/{symbol}_{tf}.json', 'w') as f:
+                        json.dump(chart_data, f)
+                        
+                    # Only extract the Watchlist Summary data from the Daily ('D') timeframe
+                    if tf == 'D' and len(chart_data) >= 2:
+                        last_c = chart_data[-1].get('close', 0)
+                        prev_c = chart_data[-2].get('close', 0)
+                        pct_chg = ((last_c - prev_c) / prev_c) * 100 if prev_c else 0
+                        
+                        summary_data[symbol] = {
+                            'chg': pct_chg,
+                            'cmp': last_c,
+                            'signal': chart_data[-1].get('dash_signal', '-'),
+                            'bp': chart_data[-1].get('bp_score', None),
+                            'rvol': chart_data[-1].get('rvol', None),
+                            'ud': chart_data[-1].get('ud_ratio', None)
+                        }
         except Exception as e:
             print(f"❌ Failed to process {symbol}: {e}")
             
