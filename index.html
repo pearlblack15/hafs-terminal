@@ -3335,7 +3335,7 @@
                     const cfgParam = encodeURIComponent(JSON.stringify(indCfg));
                     url = `/api/data/${symbol}?tf=${currentTimeframe}&inds=${indsParam}&cfg=${cfgParam}&v=${cacheVersion}`;
                 } else {
-                    url = `api/data/${symbol}.json?v=${cacheVersion}`;
+                    url = `api/data/${symbol}_${currentTimeframe}.json?v=${cacheVersion}`;
                 }
                 
                 const response = await fetch(url);
