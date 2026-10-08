@@ -176,25 +176,55 @@ def apply_mtf(df, cfg):
     w_raw = df.groupby('year_week').agg({'time':'first', 'open':'first', 'high':'max', 'low':'min', 'close':'last'})
     m_df = df.groupby('year_month').agg({'time':'first', 'open':'first', 'high':'max', 'low':'min', 'close':'last'})
     
-    # 6. Weekly Supply Zones
-    w_raw['is_fractal_high'] = (w_raw['high'] > w_raw['high'].shift(1)) & \
-                               (w_raw['high'] > w_raw['high'].shift(2)) & \
-                               (w_raw['high'] > w_raw['high'].shift(-1)) & \
-                               (w_raw['high'] > w_raw['high'].shift(-2))
+    # 6. Weekly Supply Zones (Smart Base-Drop Detection)
+    w_raw['body'] = (w_raw['close'] - w_raw['open']).abs()
+    w_raw['range'] = w_raw['high'] - w_raw['low']
+    
+    # 1. Base Candle: Max 60% body (Filters out momentum spikes, keeps thick bases)
+    w_raw['is_base'] = w_raw['body'] <= (w_raw['range'] * 0.60)
+    
+    # 2. The Drop: Next week must be a red candle closing below the base's low
+    w_raw['next_close'] = w_raw['close'].shift(-1)
+    w_raw['next_open'] = w_raw['open'].shift(-1)
+    
+    w_raw['is_drop'] = (w_raw['next_close'] < w_raw['next_open']) & \
+                       (w_raw['next_close'] < w_raw['low'])
+    
+    # 3. Valid Supply Formation: A base immediately followed by a drop
+    w_raw['is_supply_formation'] = w_raw['is_base'] & w_raw['is_drop']
     
     supply_zones = []
     current_close = df['close'].iloc[-1] if len(df) > 0 else 0
-    fractals = w_raw[w_raw['is_fractal_high']]
+    formations = w_raw[w_raw['is_supply_formation']]
     
-    for idx, row in fractals.iloc[::-1].iterrows():
-        if row['high'] > current_close:
+    for idx, row in formations.iloc[::-1].iterrows():
+        loc_idx = w_raw.index.get_loc(idx)
+        
+        cluster_high = row['high']
+        cluster_bot = min(row['open'], row['close'])
+        cluster_time = row['time']  # <-- FIX: Track the actual start time!
+        
+        # Look backwards dynamically for consecutive base candles
+        b_offset = 1
+        while (loc_idx - b_offset) >= 0:
+            prev_row = w_raw.iloc[loc_idx - b_offset]
+            if prev_row['is_base']:
+                cluster_high = max(cluster_high, prev_row['high'])
+                cluster_bot = min(cluster_bot, prev_row['open'], prev_row['close'])
+                cluster_time = prev_row['time']  # <-- FIX: Push drawing start point backwards
+                b_offset += 1
+            else:
+                break  
+        
+        # Ensure the master cluster zone is overhead (active supply)
+        if cluster_high > current_close:
             subsequent_closes = w_raw.loc[idx:]['close'].iloc[1:]
-            if not (subsequent_closes > row['high']).any():
-                # EOD data uses UTC in charts, we maintain that specifically for rendering these zone lines
+            # Ensure the zone hasn't been invalidated by a close above the highest wick
+            if not (subsequent_closes > cluster_high).any():
                 supply_zones.append({
-                    'time': int(pd.to_datetime(row['time']).tz_localize('UTC').timestamp() * 1000),
-                    'top': float(row['high']),
-                    'bot': float(min(row['open'], row['close']))
+                    'time': int(pd.to_datetime(cluster_time).tz_localize('UTC').timestamp() * 1000),
+                    'top': float(cluster_high),
+                    'bot': float(cluster_bot)
                 })
         if len(supply_zones) >= 2:
             break
