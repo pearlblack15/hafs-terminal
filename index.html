@@ -1561,7 +1561,8 @@
 
         // Hide context menu when clicking anywhere else
         document.addEventListener('click', (e) => {
-            if (e.target.closest('#wl-context-menu') === null) {
+            const ctxMenu = document.getElementById('wl-context-menu');
+            if (ctxMenu && e.target.closest('#wl-context-menu') === null) {
                 ctxMenu.style.display = 'none';
             }
         });
