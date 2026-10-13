@@ -586,6 +586,7 @@
             <button class="t-btn" id="btn-hray" onclick="setTool('hray')" title="Horizontal Ray">↦</button>
             <button class="t-btn" id="btn-trendline" onclick="setTool('trendline')" title="Trendline">📉</button>
             <button class="t-btn" id="btn-fibo" onclick="setTool('fibo')" title="Fibonacci (2-Click)">⚄</button>
+            <button class="t-btn" id="btn-measure" onclick="setTool('measure')" title="Measure Tool">📏</button>
             <button class="t-btn" id="btn-eraser" onclick="setTool('eraser')" title="Eraser Tool (Click line to delete)">⌫</button>
             <button class="t-btn" id="btn-magnet" onclick="toggleMagnet()" title="Magnet Mode (Alt+M)">🧲</button>
             <div style="flex-grow: 1;"></div>
@@ -2698,6 +2699,13 @@
             else document.getElementById('btn-crosshair').classList.add('active');
             
             document.getElementById('chart-container').style.cursor = activeTool ? 'crosshair' : 'default';
+            
+            // Lock chart panning and zooming on mobile/desktop while a drawing tool is active
+            chart.applyOptions({
+                handleScroll: !activeTool,
+                handleScale: !activeTool
+            });
+            
             clickState = 0; tempDrawing = null;
         }
         
@@ -2752,10 +2760,12 @@
             return { time, price: closestPrice };
         }
 
-        document.getElementById('chart-container').addEventListener('mousedown', (e) => {
+        document.getElementById('chart-container').addEventListener('pointerdown', (e) => {
             if (isReplaySelecting) return; 
-            if (!activeTool || lastChartData.length === 0) {
-                if (e.shiftKey) {
+            
+            // Trigger measure via the dedicated button OR the legacy Shift key
+            if (!activeTool || activeTool === 'measure' || lastChartData.length === 0) {
+                if (e.shiftKey || (activeTool === 'measure' && !measureStart)) {
                     const rect = document.getElementById('tv-chart').getBoundingClientRect();
                     const time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
                     const price = candleSeries.coordinateToPrice(e.clientY - rect.top);
@@ -2774,6 +2784,7 @@
                     measureStart = null;
                     document.getElementById('measure-overlay').style.display = 'none';
                     document.getElementById('measure-badge').style.display = 'none';
+                    if (activeTool === 'measure') setTool(null); // Auto-exit tool after 1 use
                     return; 
                 }
             }
@@ -2854,7 +2865,7 @@
             }
         });
 
-        document.getElementById('chart-container').addEventListener('mousemove', (e) => {
+        document.getElementById('chart-container').addEventListener('pointermove', (e) => {
             if (measureStart) {
                 const rect = document.getElementById('tv-chart').getBoundingClientRect();
                 let currX = e.clientX - rect.left;
