@@ -640,10 +640,12 @@
         </div>
         
         <div id="chart-container">
-            <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 10px; pointer-events: auto;">
+        	<div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
+                <div id="chart-color-tag" class="color-tag tag-none" onclick="if(currentSymbol) cycleColor(event, currentSymbol)" style="width: 12px; height: 12px; transition: transform 0.1s;" title="Click to cycle color tag"></div>
                 <div id="company-name" style="position: relative; top: 0; left: 0;">-</div>
                 <button id="btn-toggle-emas" class="emas-on" onclick="toggleEmas()" title="Show/Hide EMAs">👁️</button>
             </div>
+
             <div id="ohlc-legend">
                 <span>O <span class="ohlc-val" id="leg-o">0.00</span></span>
                 <span>H <span class="ohlc-val" id="leg-h">0.00</span></span>
@@ -1865,56 +1867,65 @@
             clearChartData("Select a Stock From List"); 
         }
         
-        function cycleColor(e, sym) {
-        e.stopPropagation();
-        const colors = ['none', 'red', 'orange', 'blue', 'green'];
-        
-        let currentItem = watchlist.find(w => w.symbol === sym);
-        if (!currentItem) return;
-        
-        let oldColor = currentItem.color;
-        let newColor = colors[(colors.indexOf(oldColor) + 1) % colors.length];
-        
-        // Define the official names for your auto-generated lists
-        const colorListNames = {
-            'red': '🔴 Red List',
-            'orange': '🟠 Orange List',
-            'blue': '🔵 Blue List',
-            'green': '🟢 Green List'
-        };
-
-        // 1. Remove the stock from the previous color list
-        if (oldColor !== 'none' && watchlistsData[colorListNames[oldColor]]) {
-            watchlistsData[colorListNames[oldColor]] = watchlistsData[colorListNames[oldColor]].filter(w => w.symbol !== sym);
-        }
-
-        // 2. Auto-create and add to the new color list
-        if (newColor !== 'none') {
-            let newListName = colorListNames[newColor];
-            if (!watchlistsData[newListName]) {
-                watchlistsData[newListName] = []; // Create list if it doesn't exist
+                function cycleColor(e, sym) {
+            e.stopPropagation();
+            const colors = ['none', 'red', 'orange', 'blue', 'green'];
+            
+            let currentItem = null;
+            // Search globally across all watchlists to find the latest state of this symbol
+            for (let listName in watchlistsData) {
+                let found = watchlistsData[listName].find(w => w.symbol === sym);
+                if (found) { currentItem = { ...found }; break; }
             }
             
-            if (!watchlistsData[newListName].find(w => w.symbol === sym)) {
-                // Clone the item data into the new list
-                watchlistsData[newListName].push({ ...currentItem, color: newColor });
+            // If somehow the stock isn't in ANY watchlist, safely inject it into the active one
+            if (!currentItem) {
+                currentItem = { symbol: sym, color: 'none', chg: 0, cmp: 0, signal: '-' };
+                watchlist.push(currentItem);
+            }
+            
+            let oldColor = currentItem.color || 'none';
+            let newColor = colors[(colors.indexOf(oldColor) + 1) % colors.length];
+            
+            const colorListNames = {
+                'red': '🔴 Red List',
+                'orange': '🟠 Orange List',
+                'blue': '🔵 Blue List',
+                'green': '🟢 Green List'
+            };
+
+            // 1. Remove from old list
+            if (oldColor !== 'none' && watchlistsData[colorListNames[oldColor]]) {
+                watchlistsData[colorListNames[oldColor]] = watchlistsData[colorListNames[oldColor]].filter(w => w.symbol !== sym);
+            }
+
+            // 2. Add to new list
+            if (newColor !== 'none') {
+                let newListName = colorListNames[newColor];
+                if (!watchlistsData[newListName]) watchlistsData[newListName] = [];
+                if (!watchlistsData[newListName].find(w => w.symbol === sym)) {
+                    watchlistsData[newListName].push({ ...currentItem, color: newColor });
+                }
+            }
+
+            // 3. Globally sync color across all memory
+            Object.keys(watchlistsData).forEach(listName => {
+                let item = watchlistsData[listName].find(w => w.symbol === sym);
+                if (item) item.color = newColor;
+            });
+
+            watchlist = watchlistsData[activeListName];
+            saveWatchlists();
+            updateListDropdown();
+            renderWl();
+            
+            // 4. Instantly update the chart UI dot if we are viewing this specific stock
+            if (sym === currentSymbol) {
+                const chartDot = document.getElementById('chart-color-tag');
+                if (chartDot) chartDot.className = `color-tag tag-${newColor}`;
             }
         }
 
-        // 3. Globally sync the color tag across ALL your watchlists
-        // 3. Globally sync the color tag across ALL your watchlists
-        Object.keys(watchlistsData).forEach(listName => {
-            let item = watchlistsData[listName].find(w => w.symbol === sym);
-            if (item) item.color = newColor;
-        });
-
-        // ADD THIS LINE: Re-links the active watchlist memory reference
-        watchlist = watchlistsData[activeListName];
-
-        saveWatchlists();
-        updateListDropdown();
-        renderWl();
-    }
         
         function importCSV(event) {
             const file = event.target.files[0];
@@ -2963,7 +2974,12 @@
         
         function clearChartData(msg) {
             document.getElementById('title-text').innerText = msg;
-            document.getElementById('company-name').innerText = "-";
+                        document.getElementById('company-name').innerText = "-";
+            
+            // Add these two lines
+            const chartDot = document.getElementById('chart-color-tag');
+            if (chartDot) chartDot.className = `color-tag tag-none`;
+
             
             candleSeries.setData([]); ema9.setData([]); ema21.setData([]); ema50.setData([]); ema200.setData([]); atrSeries.setData([]);
             candleSeries.setMarkers([]);
@@ -3377,7 +3393,13 @@
                 const data = await response.json();
                 if (!data || data.length === 0) throw new Error("Empty Data");
                 
-                document.getElementById('company-name').innerText = data[0].full_name ? data[0].full_name : symbol;
+                                document.getElementById('company-name').innerText = data[0].full_name ? data[0].full_name : symbol;
+                
+                // Add these three lines to instantly fetch and apply the saved color
+                const activeColor = getSavedColor(symbol);
+                const chartDot = document.getElementById('chart-color-tag');
+                if (chartDot) chartDot.className = `color-tag tag-${activeColor}`;
+
                 
                 lastChartData = data; 
                 renderChartState(lastChartData);
