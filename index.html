@@ -2760,31 +2760,35 @@
             return { time, price: closestPrice };
         }
 
-        document.getElementById('chart-container').addEventListener('pointerdown', (e) => {
+                // Upgraded to 'pointerup' so mobile users can touch, aim, and release to drop anchors!
+        document.getElementById('chart-container').addEventListener('pointerup', (e) => {
             if (isReplaySelecting) return; 
             
-            // Trigger measure via the dedicated button OR the legacy Shift key
+            // MEASURE TOOL: 3-Tap Mobile Flow (Aim -> Stretch -> Lock/Read -> Clear)
             if (!activeTool || activeTool === 'measure' || lastChartData.length === 0) {
-                if (e.shiftKey || (activeTool === 'measure' && !measureStart)) {
+                if (e.shiftKey || (activeTool === 'measure' && clickState === 0)) {
                     const rect = document.getElementById('tv-chart').getBoundingClientRect();
                     const time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
                     const price = candleSeries.coordinateToPrice(e.clientY - rect.top);
                     if (time && price) {
                         measureStart = { x: e.clientX - rect.left, y: e.clientY - rect.top, time, price };
+                        clickState = 1;
                         const overlay = document.getElementById('measure-overlay');
-                        overlay.style.width = '0px';
-                        overlay.style.height = '0px';
-                        overlay.style.left = measureStart.x + 'px';
-                        overlay.style.top = measureStart.y + 'px';
+                        overlay.style.width = '0px'; overlay.style.height = '0px';
+                        overlay.style.left = measureStart.x + 'px'; overlay.style.top = measureStart.y + 'px';
                         overlay.style.display = 'block';
                         document.getElementById('measure-badge').style.display = 'none'; 
                     }
                     return; 
-                } else if (measureStart) {
+                } else if (activeTool === 'measure' && clickState === 1) {
+                    clickState = 2; // Lock the box on the screen so you can read it
+                    return;
+                } else if (measureStart && (clickState === 2 || !e.shiftKey)) {
                     measureStart = null;
                     document.getElementById('measure-overlay').style.display = 'none';
                     document.getElementById('measure-badge').style.display = 'none';
-                    if (activeTool === 'measure') setTool(null); // Auto-exit tool after 1 use
+                    if (activeTool === 'measure') setTool(null); 
+                    clickState = 0;
                     return; 
                 }
             }
@@ -2832,8 +2836,20 @@
                 return; 
             }
 
-            const snapped = applyMagnet(time, price);
-            time = snapped.time; price = snapped.price;
+            // SMART MAGNET LOGIC
+            let snappedTime = time;
+            let snappedPrice = price;
+
+            if (isMagnet) {
+                // Bypass magnet completely if locking the 2nd anchor of a trendline
+                if (!(activeTool === 'trendline' && clickState === 1)) {
+                    const snapped = applyMagnet(time, price);
+                    snappedTime = snapped.time;
+                    snappedPrice = snapped.price;
+                }
+            }
+            time = snappedTime;
+            price = snappedPrice;
 
             const lastTime = lastChartData[lastChartData.length-1].time;
             const groupId = Date.now(); 
@@ -2865,8 +2881,10 @@
             }
         });
 
-        document.getElementById('chart-container').addEventListener('pointermove', (e) => {
-            if (measureStart) {
+
+                document.getElementById('chart-container').addEventListener('pointermove', (e) => {
+            // Only update the Measure Tool if it hasn't been locked (clickState !== 2)
+            if (measureStart && clickState !== 2) {
                 const rect = document.getElementById('tv-chart').getBoundingClientRect();
                 let currX = e.clientX - rect.left;
                 let currY = e.clientY - rect.top;
@@ -2930,12 +2948,16 @@
                 let time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
                 let price = candleSeries.coordinateToPrice(e.clientY - rect.top);
                 if (time && price && time !== tempDrawing.t1) {
-                    const snapped = applyMagnet(time, price);
-                    let data = snapped.time > tempDrawing.t1 ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: snapped.time, value: snapped.price }] : [{ time: snapped.time, value: snapped.price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
+                    // MAGNET BYPASSED: The second anchor freely follows your finger
+                    let data = time > tempDrawing.t1 
+                        ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: time, value: price }] 
+                        : [{ time: time, value: price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
+                    
                     tempDrawing.series.setData(data);
                 }
             }
         });
+
 
         let axisMarkers = []; 
         
