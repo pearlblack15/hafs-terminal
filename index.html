@@ -2679,7 +2679,7 @@
             }
         });
 
-        let activeTool = null, activeDrawings = [], clickState = 0, tempDrawing = null;
+                let activeTool = null, activeDrawings = [], clickState = 0, tempDrawing = null;
         let isMagnet = localStorage.getItem('tv-magnet-mode') === 'true'; 
         let measureStart = null; 
 
@@ -2688,7 +2688,8 @@
             document.getElementById('btn-magnet').classList.toggle('active', isMagnet);
             localStorage.setItem('tv-magnet-mode', isMagnet);
         }
-                let mobileCX = 0, mobileCY = 0;
+
+        let mobileCX = 0, mobileCY = 0;
         let ptDownX = 0, ptDownY = 0;
         let hasDragged = false;
         let isDrawingDown = false;
@@ -2701,7 +2702,7 @@
             
             document.getElementById('chart-container').style.cursor = activeTool ? 'crosshair' : 'default';
             
-            // FREEZE THE CHART COMPLETELY WHEN A TOOL IS ACTIVE
+            // FREEZE CHART WHEN TOOL ACTIVE
             chart.applyOptions({ handleScroll: !activeTool, handleScale: !activeTool }); 
             
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
@@ -2710,16 +2711,71 @@
                 if (activeTool && isMobile) {
                     mc.style.display = 'block';
                     const rect = document.getElementById('tv-chart').getBoundingClientRect();
-                    mobileCX = rect.width / 2; mobileCY = rect.height / 2; // Start crosshair dead center
+                    mobileCX = rect.width / 2; mobileCY = rect.height / 2; 
                     mc.style.left = mobileCX + 'px'; mc.style.top = mobileCY + 'px';
                 } else {
                     mc.style.display = 'none';
                 }
             }
             clickState = 0; tempDrawing = null;
+            if (activeTool !== 'measure') {
+                measureStart = null;
+                document.getElementById('measure-overlay').style.display = 'none';
+                document.getElementById('measure-badge').style.display = 'none';
+            }
         }
 
-        // Helper: Updates visual stretching (Trendlines & Measure Box)
+        function saveDrawingsToStorage() {
+            let serialized = [];
+            activeDrawings.forEach(d => {
+                if(d.type === 'hline') serialized.push({ type: 'hline', price: d.obj.options().price, groupId: d.groupId });
+                else serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId });
+            });
+            allSavedDrawings[currentSymbol] = serialized;
+            localStorage.setItem('tv-drawings-v1', JSON.stringify(allSavedDrawings));
+        }
+
+        function restoreDrawingsForSymbol() {
+            const saved = allSavedDrawings[currentSymbol];
+            if(!saved) return;
+            saved.forEach(d => {
+                if(d.type === 'hline') {
+                    const pl = candleSeries.createPriceLine({ price: d.price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
+                    activeDrawings.push({ type: 'hline', obj: pl, groupId: d.groupId });
+                } else {
+                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false });
+                    ls.setData(d.data);
+                    activeDrawings.push({ type: d.type, obj: ls, groupId: d.groupId });
+                }
+            });
+        }
+
+        function clearDrawings() {
+            activeDrawings.forEach(d => { if (d.type === 'hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
+            activeDrawings = []; setTool(null); saveDrawingsToStorage();
+        }
+        
+        function undoLastDrawing() {
+            if (activeDrawings.length === 0) return;
+            const last = activeDrawings.pop();
+            if (last.type === 'hline') candleSeries.removePriceLine(last.obj); else chart.removeSeries(last.obj);
+            setTool(null); saveDrawingsToStorage();
+        }
+
+        function applyMagnet(time, price) {
+            if (!isMagnet || !time) return { time, price };
+            const c = candleMap.get(time);
+            if (!c) return { time, price };
+            const vals = [c.o, c.h, c.l, c.c];
+            let closestPrice = vals[0];
+            let minDiff = Math.abs(vals[0] - price);
+            for(let i=1; i<4; i++) {
+                const diff = Math.abs(vals[i] - price);
+                if(diff < minDiff) { minDiff = diff; closestPrice = vals[i]; }
+            }
+            return { time, price: closestPrice };
+        }
+
         function updateDrawingPreview(x, y) {
             let time = chart.timeScale().coordinateToTime(x);
             let price = candleSeries.coordinateToPrice(y);
@@ -2750,7 +2806,6 @@
             }
 
             if (activeTool === 'trendline' && clickState === 1 && tempDrawing) {
-                // MAGNET BYPASSED during drag
                 let data = time > tempDrawing.t1 ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: time, value: price }] : [{ time: time, value: price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
                 tempDrawing.series.setData(data);
             }
@@ -2772,7 +2827,6 @@
 
             if (activeTool && isMobile) {
                 if (isDrawingDown && hasDragged) {
-                    // TRACKPAD: Move the crosshair via swipe deltas
                     mobileCX += (e.clientX - ptDownX);
                     mobileCY += (e.clientY - ptDownY);
                     mobileCX = Math.max(0, Math.min(mobileCX, rect.width));
@@ -2797,13 +2851,11 @@
             isDrawingDown = false;
             if (!activeTool || lastChartData.length === 0) return;
 
-            // IF YOU WERE SWIPING TO MOVE THE CROSSHAIR, DO NOT DROP AN ANCHOR
             if (hasDragged) return;
 
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
             
-            // A CLEAN TAP: Drops anchor precisely at crosshair (Mobile) or mouse (PC)
             let targetX = isMobile ? mobileCX : (e.clientX - rect.left);
             let targetY = isMobile ? mobileCY : (e.clientY - rect.top);
 
@@ -2848,7 +2900,6 @@
                 return; 
             }
 
-            // MEASURE TOOL: 3-Tap UI Logic
             if (activeTool === 'measure') {
                 if (clickState === 0) {
                     measureStart = { x: targetX, y: targetY, time, price };
@@ -2860,7 +2911,7 @@
                     document.getElementById('measure-badge').style.display = 'none'; 
                     return; 
                 } else if (clickState === 1) {
-                    clickState = 2; // Lock the box
+                    clickState = 2; 
                     return;
                 } else if (clickState === 2) {
                     measureStart = null;
@@ -2871,7 +2922,6 @@
                 }
             }
 
-            // SMART MAGNET: Bypass magnet completely if anchoring the 2nd point of a trendline
             let snappedTime = time; let snappedPrice = price;
             if (isMagnet && !(activeTool === 'trendline' && clickState === 1)) {
                 const snapped = applyMagnet(time, price);
@@ -2908,84 +2958,7 @@
                 }
             }
         });
-
-                document.getElementById('chart-container').addEventListener('pointermove', (e) => {
-            // Only update the Measure Tool if it hasn't been locked (clickState !== 2)
-            if (measureStart && clickState !== 2) {
-                const rect = document.getElementById('tv-chart').getBoundingClientRect();
-                let currX = e.clientX - rect.left;
-                let currY = e.clientY - rect.top;
-                
-                if (currX < 0 || currX > rect.width || currY < 0 || currY > rect.height) return;
-
-                const currTime = chart.timeScale().coordinateToTime(currX);
-                const currPrice = candleSeries.coordinateToPrice(currY);
-
-                if (currTime && currPrice) {
-                    const overlay = document.getElementById('measure-overlay');
-                    const badge = document.getElementById('measure-badge');
-                    
-                    if (badge.style.display !== 'block') badge.style.display = 'block';
-
-                    const left = Math.min(measureStart.x, currX);
-                    const top = Math.min(measureStart.y, currY);
-                    const width = Math.abs(currX - measureStart.x);
-                    const height = Math.abs(currY - measureStart.y);
-
-                    overlay.style.left = left + 'px';
-                    overlay.style.top = top + 'px';
-                    overlay.style.width = width + 'px';
-                    overlay.style.height = height + 'px';
-
-                    const priceDiff = currPrice - measureStart.price;
-                    const pctDiff = (priceDiff / measureStart.price) * 100;
-
-                    let barsDiff = 0;
-                    const dataToUse = isReplayActive ? lastChartData.slice(0, replayIndex + 1) : lastChartData;
-                    const startIdx = dataToUse.findIndex(d => (d.time/1000) === measureStart.time);
-                    const currIdx = dataToUse.findIndex(d => (d.time/1000) === currTime);
-                    if (startIdx > -1 && currIdx > -1) barsDiff = Math.abs(currIdx - startIdx);
-
-                    const msDiff = Math.abs(currTime - measureStart.time) * 1000;
-                    const daysDiff = Math.round(msDiff / (1000 * 60 * 60 * 24));
-
-                    const sign = priceDiff >= 0 ? '+' : '';
-                    const color = priceDiff >= 0 ? '#089981' : '#f23645';
-                    const bgColor = priceDiff >= 0 ? 'rgba(8, 153, 129, 0.1)' : 'rgba(242, 54, 69, 0.1)';
-
-                    badge.style.background = color;
-                    overlay.style.borderColor = color;
-                    overlay.style.backgroundColor = bgColor;
-
-                    badge.innerHTML = `${sign}${pctDiff.toFixed(2)}% (${sign}${priceDiff.toFixed(2)})<br>${barsDiff} Bars, ${daysDiff} Days`;
-
-                    let badgeX = currX + 15;
-                    let badgeY = currY + 15;
-                    if (badgeX + 130 > rect.width) badgeX = currX - 145;
-                    if (badgeY + 40 > rect.height) badgeY = currY - 50;
-
-                    badge.style.left = badgeX + 'px';
-                    badge.style.top = badgeY + 'px';
-                }
-                return;
-            }
-
-            if (activeTool === 'trendline' && clickState === 1 && tempDrawing) {
-                const rect = document.getElementById('chart-container').getBoundingClientRect();
-                let time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
-                let price = candleSeries.coordinateToPrice(e.clientY - rect.top);
-                if (time && price && time !== tempDrawing.t1) {
-                    // MAGNET BYPASSED: The second anchor freely follows your finger
-                    let data = time > tempDrawing.t1 
-                        ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: time, value: price }] 
-                        : [{ time: time, value: price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
-                    
-                    tempDrawing.series.setData(data);
-                }
-            }
-        });
-
-
+        
         let axisMarkers = []; 
         
         function clearChartData(msg) {
