@@ -640,11 +640,20 @@
         </div>
         
         <div id="chart-container">
-        	<div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
-                <div id="chart-color-tag" class="color-tag tag-none" onclick="if(currentSymbol) cycleColor(event, currentSymbol)" style="width: 12px; height: 12px; transition: transform 0.1s;" title="Click to cycle color tag"></div>
+        	            <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
+                <div id="chart-color-tag" class="color-tag tag-none" onclick="if(currentSymbol) cycleColor(event, currentSymbol)" style="width: 14px; height: 14px; transition: transform 0.1s; cursor: pointer;" title="Tap to cycle color"></div>
+                <div id="chart-sig-badge" class="sig-badge" style="display: none; width: 16px; height: 16px; font-size: 11px; cursor: default;">-</div>
                 <div id="company-name" style="position: relative; top: 0; left: 0;">-</div>
                 <button id="btn-toggle-emas" class="emas-on" onclick="toggleEmas()" title="Show/Hide EMAs">👁️</button>
             </div>
+            
+            <!-- Mobile Trackpad Crosshair -->
+            <div id="mobile-crosshair" style="display: none; position: absolute; pointer-events: none; z-index: 45;">
+                <div style="position: absolute; top: 0; left: -2000px; width: 4000px; height: 1px; border-top: 1px dashed #2962ff;"></div>
+                <div style="position: absolute; top: -2000px; left: 0; width: 1px; height: 4000px; border-left: 1px dashed #2962ff;"></div>
+                <div style="position: absolute; top: -4px; left: -4px; width: 8px; height: 8px; background: rgba(41, 98, 255, 0.2); border: 1.5px solid #2962ff; border-radius: 50%;"></div>
+            </div>
+
 
             <div id="ohlc-legend">
                 <span>O <span class="ohlc-val" id="leg-o">0.00</span></span>
@@ -1867,18 +1876,15 @@
             clearChartData("Select a Stock From List"); 
         }
         
-                function cycleColor(e, sym) {
+                        function cycleColor(e, sym) {
             e.stopPropagation();
             const colors = ['none', 'red', 'orange', 'blue', 'green'];
             
             let currentItem = null;
-            // Search globally across all watchlists to find the latest state of this symbol
             for (let listName in watchlistsData) {
                 let found = watchlistsData[listName].find(w => w.symbol === sym);
                 if (found) { currentItem = { ...found }; break; }
             }
-            
-            // If somehow the stock isn't in ANY watchlist, safely inject it into the active one
             if (!currentItem) {
                 currentItem = { symbol: sym, color: 'none', chg: 0, cmp: 0, signal: '-' };
                 watchlist.push(currentItem);
@@ -1886,46 +1892,27 @@
             
             let oldColor = currentItem.color || 'none';
             let newColor = colors[(colors.indexOf(oldColor) + 1) % colors.length];
-            
-            const colorListNames = {
-                'red': '🔴 Red List',
-                'orange': '🟠 Orange List',
-                'blue': '🔵 Blue List',
-                'green': '🟢 Green List'
-            };
+            const colorListNames = { 'red': '🔴 Red List', 'orange': '🟠 Orange List', 'blue': '🔵 Blue List', 'green': '🟢 Green List' };
 
-            // 1. Remove from old list
-            if (oldColor !== 'none' && watchlistsData[colorListNames[oldColor]]) {
-                watchlistsData[colorListNames[oldColor]] = watchlistsData[colorListNames[oldColor]].filter(w => w.symbol !== sym);
-            }
-
-            // 2. Add to new list
+            if (oldColor !== 'none' && watchlistsData[colorListNames[oldColor]]) watchlistsData[colorListNames[oldColor]] = watchlistsData[colorListNames[oldColor]].filter(w => w.symbol !== sym);
             if (newColor !== 'none') {
                 let newListName = colorListNames[newColor];
                 if (!watchlistsData[newListName]) watchlistsData[newListName] = [];
-                if (!watchlistsData[newListName].find(w => w.symbol === sym)) {
-                    watchlistsData[newListName].push({ ...currentItem, color: newColor });
-                }
+                if (!watchlistsData[newListName].find(w => w.symbol === sym)) watchlistsData[newListName].push({ ...currentItem, color: newColor });
             }
 
-            // 3. Globally sync color across all memory
             Object.keys(watchlistsData).forEach(listName => {
                 let item = watchlistsData[listName].find(w => w.symbol === sym);
                 if (item) item.color = newColor;
             });
 
-            watchlist = watchlistsData[activeListName];
-            saveWatchlists();
-            updateListDropdown();
-            renderWl();
+            watchlist = watchlistsData[activeListName]; saveWatchlists(); updateListDropdown(); renderWl();
             
-            // 4. Instantly update the chart UI dot if we are viewing this specific stock
             if (sym === currentSymbol) {
                 const chartDot = document.getElementById('chart-color-tag');
                 if (chartDot) chartDot.className = `color-tag tag-${newColor}`;
             }
         }
-
         
         function importCSV(event) {
             const file = event.target.files[0];
@@ -2701,117 +2688,131 @@
             document.getElementById('btn-magnet').classList.toggle('active', isMagnet);
             localStorage.setItem('tv-magnet-mode', isMagnet);
         }
+                let mobileCX = 0, mobileCY = 0;
+        let ptDownX = 0, ptDownY = 0;
+        let hasDragged = false;
+        let isDrawingDown = false;
+
         function setTool(tool) {
             activeTool = activeTool === tool ? null : tool;
-            document.querySelectorAll('.t-btn').forEach(b => {
-                if (b.id !== 'btn-magnet') b.classList.remove('active');
-            });
+            document.querySelectorAll('.t-btn').forEach(b => { if (b.id !== 'btn-magnet') b.classList.remove('active'); });
             if(activeTool) document.getElementById('btn-' + activeTool).classList.add('active');
             else document.getElementById('btn-crosshair').classList.add('active');
             
             document.getElementById('chart-container').style.cursor = activeTool ? 'crosshair' : 'default';
             
-            // Lock chart panning and zooming on mobile/desktop while a drawing tool is active
-            chart.applyOptions({
-                handleScroll: !activeTool,
-                handleScale: !activeTool
-            });
+            // FREEZE THE CHART COMPLETELY WHEN A TOOL IS ACTIVE
+            chart.applyOptions({ handleScroll: !activeTool, handleScale: !activeTool }); 
             
+            const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
+            const mc = document.getElementById('mobile-crosshair');
+            if (mc) {
+                if (activeTool && isMobile) {
+                    mc.style.display = 'block';
+                    const rect = document.getElementById('tv-chart').getBoundingClientRect();
+                    mobileCX = rect.width / 2; mobileCY = rect.height / 2; // Start crosshair dead center
+                    mc.style.left = mobileCX + 'px'; mc.style.top = mobileCY + 'px';
+                } else {
+                    mc.style.display = 'none';
+                }
+            }
             clickState = 0; tempDrawing = null;
         }
-        
-        function saveDrawingsToStorage() {
-            let serialized = [];
-            activeDrawings.forEach(d => {
-                if(d.type === 'hline') serialized.push({ type: 'hline', price: d.obj.options().price, groupId: d.groupId });
-                else serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId });
-            });
-            allSavedDrawings[currentSymbol] = serialized;
-            localStorage.setItem('tv-drawings-v1', JSON.stringify(allSavedDrawings));
-        }
 
-        function restoreDrawingsForSymbol() {
-            const saved = allSavedDrawings[currentSymbol];
-            if(!saved) return;
-            saved.forEach(d => {
-                if(d.type === 'hline') {
-                    const pl = candleSeries.createPriceLine({ price: d.price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
-                    activeDrawings.push({ type: 'hline', obj: pl, groupId: d.groupId });
-                } else {
-                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false });
-                    ls.setData(d.data);
-                    activeDrawings.push({ type: d.type, obj: ls, groupId: d.groupId });
-                }
-            });
-        }
+        // Helper: Updates visual stretching (Trendlines & Measure Box)
+        function updateDrawingPreview(x, y) {
+            let time = chart.timeScale().coordinateToTime(x);
+            let price = candleSeries.coordinateToPrice(y);
+            if (!time || !price) return;
 
-        function clearDrawings() {
-            activeDrawings.forEach(d => { if (d.type === 'hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
-            activeDrawings = []; setTool(null); saveDrawingsToStorage();
-        }
-        
-        function undoLastDrawing() {
-            if (activeDrawings.length === 0) return;
-            const last = activeDrawings.pop();
-            if (last.type === 'hline') candleSeries.removePriceLine(last.obj); else chart.removeSeries(last.obj);
-            setTool(null); saveDrawingsToStorage();
-        }
+            if (activeTool === 'measure' && clickState === 1 && measureStart) {
+                const overlay = document.getElementById('measure-overlay'); const badge = document.getElementById('measure-badge');
+                badge.style.display = 'block';
+                const rect = document.getElementById('tv-chart').getBoundingClientRect();
+                overlay.style.left = Math.min(measureStart.x, x) + 'px'; overlay.style.top = Math.min(measureStart.y, y) + 'px';
+                overlay.style.width = Math.abs(x - measureStart.x) + 'px'; overlay.style.height = Math.abs(y - measureStart.y) + 'px';
 
-        function applyMagnet(time, price) {
-            if (!isMagnet || !time) return { time, price };
-            const c = candleMap.get(time);
-            if (!c) return { time, price };
-            const vals = [c.o, c.h, c.l, c.c];
-            let closestPrice = vals[0];
-            let minDiff = Math.abs(vals[0] - price);
-            for(let i=1; i<4; i++) {
-                const diff = Math.abs(vals[i] - price);
-                if(diff < minDiff) { minDiff = diff; closestPrice = vals[i]; }
-            }
-            return { time, price: closestPrice };
-        }
+                const priceDiff = price - measureStart.price; const pctDiff = (priceDiff / measureStart.price) * 100;
+                let barsDiff = 0;
+                const dataToUse = isReplayActive ? lastChartData.slice(0, replayIndex + 1) : lastChartData;
+                const startIdx = dataToUse.findIndex(d => (d.time/1000) === measureStart.time);
+                const currIdx = dataToUse.findIndex(d => (d.time/1000) === time);
+                if (startIdx > -1 && currIdx > -1) barsDiff = Math.abs(currIdx - startIdx);
+                const daysDiff = Math.round(Math.abs(time - measureStart.time) * 1000 / (1000 * 60 * 60 * 24));
+                const sign = priceDiff >= 0 ? '+' : '';
+                badge.style.background = priceDiff >= 0 ? '#089981' : '#f23645'; overlay.style.borderColor = priceDiff >= 0 ? '#089981' : '#f23645'; overlay.style.backgroundColor = priceDiff >= 0 ? 'rgba(8, 153, 129, 0.1)' : 'rgba(242, 54, 69, 0.1)';
+                badge.innerHTML = `${sign}${pctDiff.toFixed(2)}% (${sign}${priceDiff.toFixed(2)})<br>${barsDiff} Bars, ${daysDiff} Days`;
 
-                // Upgraded to 'pointerup' so mobile users can touch, aim, and release to drop anchors!
-        document.getElementById('chart-container').addEventListener('pointerup', (e) => {
-            if (isReplaySelecting) return; 
-            
-            // MEASURE TOOL: 3-Tap Mobile Flow (Aim -> Stretch -> Lock/Read -> Clear)
-            if (!activeTool || activeTool === 'measure' || lastChartData.length === 0) {
-                if (e.shiftKey || (activeTool === 'measure' && clickState === 0)) {
-                    const rect = document.getElementById('tv-chart').getBoundingClientRect();
-                    const time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
-                    const price = candleSeries.coordinateToPrice(e.clientY - rect.top);
-                    if (time && price) {
-                        measureStart = { x: e.clientX - rect.left, y: e.clientY - rect.top, time, price };
-                        clickState = 1;
-                        const overlay = document.getElementById('measure-overlay');
-                        overlay.style.width = '0px'; overlay.style.height = '0px';
-                        overlay.style.left = measureStart.x + 'px'; overlay.style.top = measureStart.y + 'px';
-                        overlay.style.display = 'block';
-                        document.getElementById('measure-badge').style.display = 'none'; 
-                    }
-                    return; 
-                } else if (activeTool === 'measure' && clickState === 1) {
-                    clickState = 2; // Lock the box on the screen so you can read it
-                    return;
-                } else if (measureStart && (clickState === 2 || !e.shiftKey)) {
-                    measureStart = null;
-                    document.getElementById('measure-overlay').style.display = 'none';
-                    document.getElementById('measure-badge').style.display = 'none';
-                    if (activeTool === 'measure') setTool(null); 
-                    clickState = 0;
-                    return; 
-                }
+                let badgeX = x + 15; let badgeY = y + 15;
+                if (badgeX + 130 > rect.width) badgeX = x - 145;
+                if (badgeY + 40 > rect.height) badgeY = y - 50;
+                badge.style.left = badgeX + 'px'; badge.style.top = badgeY + 'px';
             }
 
-            if (!activeTool || lastChartData.length === 0) return;
+            if (activeTool === 'trendline' && clickState === 1 && tempDrawing) {
+                // MAGNET BYPASSED during drag
+                let data = time > tempDrawing.t1 ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: time, value: price }] : [{ time: time, value: price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
+                tempDrawing.series.setData(data);
+            }
+        }
+
+        document.getElementById('chart-container').addEventListener('pointerdown', (e) => {
+            if (isReplaySelecting) return;
+            isDrawingDown = true; hasDragged = false;
+            ptDownX = e.clientX; ptDownY = e.clientY;
+        });
+
+        document.getElementById('chart-container').addEventListener('pointermove', (e) => {
+            const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
+            if (isDrawingDown) {
+                if (Math.abs(e.clientX - ptDownX) > 5 || Math.abs(e.clientY - ptDownY) > 5) hasDragged = true;
+            }
+
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
-            let time = chart.timeScale().coordinateToTime(e.clientX - rect.left);
-            let price = candleSeries.coordinateToPrice(e.clientY - rect.top);
+
+            if (activeTool && isMobile) {
+                if (isDrawingDown && hasDragged) {
+                    // TRACKPAD: Move the crosshair via swipe deltas
+                    mobileCX += (e.clientX - ptDownX);
+                    mobileCY += (e.clientY - ptDownY);
+                    mobileCX = Math.max(0, Math.min(mobileCX, rect.width));
+                    mobileCY = Math.max(0, Math.min(mobileCY, rect.height));
+                    ptDownX = e.clientX; ptDownY = e.clientY;
+
+                    document.getElementById('mobile-crosshair').style.left = mobileCX + 'px';
+                    document.getElementById('mobile-crosshair').style.top = mobileCY + 'px';
+                    updateDrawingPreview(mobileCX, mobileCY);
+                }
+                return; 
+            }
+
+            if (activeTool && !isMobile) {
+                let currX = e.clientX - rect.left; let currY = e.clientY - rect.top;
+                if (currX >= 0 && currX <= rect.width && currY >= 0 && currY <= rect.height) updateDrawingPreview(currX, currY);
+            }
+        });
+
+        document.getElementById('chart-container').addEventListener('pointerup', (e) => {
+            if (isReplaySelecting) return;
+            isDrawingDown = false;
+            if (!activeTool || lastChartData.length === 0) return;
+
+            // IF YOU WERE SWIPING TO MOVE THE CROSSHAIR, DO NOT DROP AN ANCHOR
+            if (hasDragged) return;
+
+            const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
+            const rect = document.getElementById('tv-chart').getBoundingClientRect();
+            
+            // A CLEAN TAP: Drops anchor precisely at crosshair (Mobile) or mouse (PC)
+            let targetX = isMobile ? mobileCX : (e.clientX - rect.left);
+            let targetY = isMobile ? mobileCY : (e.clientY - rect.top);
+
+            let time = chart.timeScale().coordinateToTime(targetX);
+            let price = candleSeries.coordinateToPrice(targetY);
             if (!time || !price) return;
             
             if (activeTool === 'eraser') {
-                const threshold = Math.abs(candleSeries.coordinateToPrice(e.clientY) - candleSeries.coordinateToPrice(e.clientY + 10)); 
+                const threshold = Math.abs(candleSeries.coordinateToPrice(targetY) - candleSeries.coordinateToPrice(targetY + 10)); 
                 let toDeleteIdx = -1;
                 for (let i = activeDrawings.length - 1; i >= 0; i--) {
                     const d = activeDrawings[i];
@@ -2847,20 +2848,36 @@
                 return; 
             }
 
-            // SMART MAGNET LOGIC
-            let snappedTime = time;
-            let snappedPrice = price;
-
-            if (isMagnet) {
-                // Bypass magnet completely if locking the 2nd anchor of a trendline
-                if (!(activeTool === 'trendline' && clickState === 1)) {
-                    const snapped = applyMagnet(time, price);
-                    snappedTime = snapped.time;
-                    snappedPrice = snapped.price;
+            // MEASURE TOOL: 3-Tap UI Logic
+            if (activeTool === 'measure') {
+                if (clickState === 0) {
+                    measureStart = { x: targetX, y: targetY, time, price };
+                    clickState = 1;
+                    const overlay = document.getElementById('measure-overlay');
+                    overlay.style.width = '0px'; overlay.style.height = '0px';
+                    overlay.style.left = targetX + 'px'; overlay.style.top = targetY + 'px';
+                    overlay.style.display = 'block';
+                    document.getElementById('measure-badge').style.display = 'none'; 
+                    return; 
+                } else if (clickState === 1) {
+                    clickState = 2; // Lock the box
+                    return;
+                } else if (clickState === 2) {
+                    measureStart = null;
+                    document.getElementById('measure-overlay').style.display = 'none';
+                    document.getElementById('measure-badge').style.display = 'none';
+                    setTool(null); 
+                    return; 
                 }
             }
-            time = snappedTime;
-            price = snappedPrice;
+
+            // SMART MAGNET: Bypass magnet completely if anchoring the 2nd point of a trendline
+            let snappedTime = time; let snappedPrice = price;
+            if (isMagnet && !(activeTool === 'trendline' && clickState === 1)) {
+                const snapped = applyMagnet(time, price);
+                snappedTime = snapped.time; snappedPrice = snapped.price;
+            }
+            time = snappedTime; price = snappedPrice;
 
             const lastTime = lastChartData[lastChartData.length-1].time;
             const groupId = Date.now(); 
@@ -2891,7 +2908,6 @@
                 }
             }
         });
-
 
                 document.getElementById('chart-container').addEventListener('pointermove', (e) => {
             // Only update the Measure Tool if it hasn't been locked (clickState !== 2)
@@ -2977,8 +2993,9 @@
                         document.getElementById('company-name').innerText = "-";
             
             // Add these two lines
-            const chartDot = document.getElementById('chart-color-tag');
+                        const chartDot = document.getElementById('chart-color-tag');
             if (chartDot) chartDot.className = `color-tag tag-none`;
+            if (document.getElementById('chart-sig-badge')) document.getElementById('chart-sig-badge').style.display = 'none';
 
             
             candleSeries.setData([]); ema9.setData([]); ema21.setData([]); ema50.setData([]); ema200.setData([]); atrSeries.setData([]);
@@ -3361,6 +3378,26 @@
             }
             
             updateTimeScaleVisibility();
+                        // --- POPULATE CHART SIGNAL BADGE & COLOR ---
+            let sigText = '-'; let sigCol = 'transparent';
+            if (isMtfActive && lastRow.dash_signal) {
+                let sig = lastRow.dash_signal;
+                if(sig.includes('MACRO')) { sigText = 'W'; sigCol = '#00bcd4'; }
+                else if(sig.includes('BUY') || sig.includes('EMA') || sig.includes('HOLD')) { sigText = 'B'; sigCol = '#089981'; }
+                else if(sig.includes('ADD')) { sigText = 'A'; sigCol = '#2962FF'; }
+                else if(sig.includes('PRIME')) { sigText = 'P'; sigCol = '#FFB300'; }
+                else if(sig.includes('WAIT') || sig.includes('BROKEN') || sig.includes('STOPPED')) { sigText = 'W'; sigCol = '#ff9800'; }
+                else if(sig.includes('HIGH') || sig.includes('EXTENDED') || sig.includes('EXHAUSTED')) { sigText = 'T'; sigCol = '#9C27B0'; }
+                else if(sig.includes('FAIL')) { sigText = 'F'; sigCol = '#f23645'; }
+            }
+            const badgeEl = document.getElementById('chart-sig-badge');
+            if (badgeEl) {
+                if (sigText !== '-') { badgeEl.innerText = sigText; badgeEl.style.background = sigCol; badgeEl.style.display = 'flex'; } 
+                else { badgeEl.style.display = 'none'; }
+            }
+            const cDot = document.getElementById('chart-color-tag');
+            if (cDot) cDot.className = `color-tag tag-${getSavedColor(currentSymbol)}`;
+            
             updateAllLegends(lastRow.time / 1000);
             
             setTimeout(() => { isSwappingStock = false; }, 50);
