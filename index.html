@@ -297,7 +297,9 @@
         
         /* The Hover-Reveal Delete Button */
         .del-btn { color: var(--ui-text-muted); cursor: pointer; font-size: 12px; flex: 0 0 20px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; position: sticky; right: 0; background: inherit; z-index: 2; margin-left: 5px;}
-        .wl-item:hover .del-btn { opacity: 1; pointer-events: auto; }
+               /* Shows X on PC hover, or on Mobile when Edit Mode is active */
+        .wl-item:hover .del-btn, #wl-list.edit-mode .del-btn { opacity: 1; pointer-events: auto; color: #f23645; }
+        
         .del-btn:hover { color: #f23645; }
 
         /* Measure Ruler UI */
@@ -1495,30 +1497,51 @@
         // --- RIGHT-CLICK CONTEXT MENU LOGIC ---
         let ctxTargetSym = null;
 
-        function showContextMenu(e, sym) {
-            e.preventDefault(); // Disables the default browser right-click menu
+                function showContextMenu(e, sym) {
+            e.preventDefault(); 
             ctxTargetSym = sym;
             
-            // Auto-create the menu HTML if it doesn't exist yet
+            // Instantly reveal the 'X' on all stocks
+            document.getElementById('wl-list').classList.add('edit-mode');
+            
             let ctxMenu = document.getElementById('wl-context-menu');
             if (!ctxMenu) {
                 ctxMenu = document.createElement('div');
                 ctxMenu.id = 'wl-context-menu';
                 document.body.appendChild(ctxMenu);
                 
-                // Hide menu when clicking anywhere else
                 document.addEventListener('click', (event) => {
                     if (event.target.closest('#wl-context-menu') === null) {
                         ctxMenu.style.display = 'none';
+                        // Auto-hide the 'X' buttons if clicking outside the menu/watchlist
+                        if (event.target.closest('#watchlist') === null) {
+                            document.getElementById('wl-list').classList.remove('edit-mode');
+                        }
                     }
                 });
             }
             
+            ctxMenu.innerHTML = `<div class="ctx-header">${sym} Actions</div>`;
+
+            // Inject the specific "Remove" button into the menu
+            const delBtn = document.createElement('div');
+            delBtn.className = 'ctx-item';
+            delBtn.style.color = '#f23645';
+            delBtn.innerHTML = '🗑 Remove from List';
+            delBtn.onclick = (ev) => {
+                removeWl(ev, sym);
+                ctxMenu.style.display = 'none';
+            };
+            ctxMenu.appendChild(delBtn);
+
             const lists = Object.keys(watchlistsData).filter(n => n !== activeListName);
-            if (lists.length === 0) {
-                ctxMenu.innerHTML = '<div class="ctx-header">Create another list first</div>';
-            } else {
-                ctxMenu.innerHTML = `<div class="ctx-header">Copy ${sym} to:</div>`;
+            if (lists.length > 0) {
+                const moveHeader = document.createElement('div');
+                moveHeader.className = 'ctx-header';
+                moveHeader.style.marginTop = '6px';
+                moveHeader.innerText = 'Copy to:';
+                ctxMenu.appendChild(moveHeader);
+
                 lists.forEach(listName => {
                     const div = document.createElement('div');
                     div.className = 'ctx-item';
@@ -1529,16 +1552,14 @@
             }
             
             ctxMenu.style.display = 'block';
-            
-            // Keep menu strictly inside window bounds
-            const menuWidth = 130;
-            const menuHeight = ctxMenu.offsetHeight;
+            const menuWidth = 130; const menuHeight = ctxMenu.offsetHeight;
             const xPos = (e.pageX + menuWidth > window.innerWidth) ? window.innerWidth - menuWidth : e.pageX;
             const yPos = (e.pageY + menuHeight > window.innerHeight) ? window.innerHeight - menuHeight : e.pageY;
             
             ctxMenu.style.left = `${xPos}px`;
             ctxMenu.style.top = `${yPos}px`;
         }
+
 
         function executeMove(targetList) {
         if (!ctxTargetSym) return;
@@ -2689,7 +2710,7 @@
             localStorage.setItem('tv-magnet-mode', isMagnet);
         }
 
-        let mobileCX = 0, mobileCY = 0;
+                        let mobileCX = 0, mobileCY = 0;
         let ptDownX = 0, ptDownY = 0;
         let hasDragged = false;
         let isDrawingDown = false;
@@ -2701,14 +2722,13 @@
             else document.getElementById('btn-crosshair').classList.add('active');
             
             document.getElementById('chart-container').style.cursor = activeTool ? 'crosshair' : 'default';
-            
-            // FREEZE CHART WHEN TOOL ACTIVE
             chart.applyOptions({ handleScroll: !activeTool, handleScale: !activeTool }); 
             
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             const mc = document.getElementById('mobile-crosshair');
             if (mc) {
-                if (activeTool && isMobile) {
+                // Bypass floating crosshair entirely if using the Eraser tool
+                if (activeTool && activeTool !== 'eraser' && isMobile) {
                     mc.style.display = 'block';
                     const rect = document.getElementById('tv-chart').getBoundingClientRect();
                     mobileCX = rect.width / 2; mobileCY = rect.height / 2; 
@@ -2723,57 +2743,6 @@
                 document.getElementById('measure-overlay').style.display = 'none';
                 document.getElementById('measure-badge').style.display = 'none';
             }
-        }
-
-        function saveDrawingsToStorage() {
-            let serialized = [];
-            activeDrawings.forEach(d => {
-                if(d.type === 'hline') serialized.push({ type: 'hline', price: d.obj.options().price, groupId: d.groupId });
-                else serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId });
-            });
-            allSavedDrawings[currentSymbol] = serialized;
-            localStorage.setItem('tv-drawings-v1', JSON.stringify(allSavedDrawings));
-        }
-
-        function restoreDrawingsForSymbol() {
-            const saved = allSavedDrawings[currentSymbol];
-            if(!saved) return;
-            saved.forEach(d => {
-                if(d.type === 'hline') {
-                    const pl = candleSeries.createPriceLine({ price: d.price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
-                    activeDrawings.push({ type: 'hline', obj: pl, groupId: d.groupId });
-                } else {
-                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false });
-                    ls.setData(d.data);
-                    activeDrawings.push({ type: d.type, obj: ls, groupId: d.groupId });
-                }
-            });
-        }
-
-        function clearDrawings() {
-            activeDrawings.forEach(d => { if (d.type === 'hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
-            activeDrawings = []; setTool(null); saveDrawingsToStorage();
-        }
-        
-        function undoLastDrawing() {
-            if (activeDrawings.length === 0) return;
-            const last = activeDrawings.pop();
-            if (last.type === 'hline') candleSeries.removePriceLine(last.obj); else chart.removeSeries(last.obj);
-            setTool(null); saveDrawingsToStorage();
-        }
-
-        function applyMagnet(time, price) {
-            if (!isMagnet || !time) return { time, price };
-            const c = candleMap.get(time);
-            if (!c) return { time, price };
-            const vals = [c.o, c.h, c.l, c.c];
-            let closestPrice = vals[0];
-            let minDiff = Math.abs(vals[0] - price);
-            for(let i=1; i<4; i++) {
-                const diff = Math.abs(vals[i] - price);
-                if(diff < minDiff) { minDiff = diff; closestPrice = vals[i]; }
-            }
-            return { time, price: closestPrice };
         }
 
         function updateDrawingPreview(x, y) {
@@ -2820,18 +2789,25 @@
         document.getElementById('chart-container').addEventListener('pointermove', (e) => {
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             if (isDrawingDown) {
-                if (Math.abs(e.clientX - ptDownX) > 5 || Math.abs(e.clientY - ptDownY) > 5) hasDragged = true;
+                if (Math.abs(e.clientX - ptDownX) > 4 || Math.abs(e.clientY - ptDownY) > 4) hasDragged = true;
             }
 
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
 
-            if (activeTool && isMobile) {
+            if (activeTool && activeTool !== 'eraser' && isMobile) {
                 if (isDrawingDown && hasDragged) {
-                    mobileCX += (e.clientX - ptDownX);
-                    mobileCY += (e.clientY - ptDownY);
+                    // PURE RELATIVE TRACKPAD WITH 1.8x SENSITIVITY BOOST
+                    const speed = 1.8; 
+                    mobileCX += (e.clientX - ptDownX) * speed;
+                    mobileCY += (e.clientY - ptDownY) * speed;
+                    
+                    // Keep crosshair strictly inside chart bounds
                     mobileCX = Math.max(0, Math.min(mobileCX, rect.width));
                     mobileCY = Math.max(0, Math.min(mobileCY, rect.height));
-                    ptDownX = e.clientX; ptDownY = e.clientY;
+                    
+                    // Reset origin for the next calculation
+                    ptDownX = e.clientX; 
+                    ptDownY = e.clientY;
 
                     document.getElementById('mobile-crosshair').style.left = mobileCX + 'px';
                     document.getElementById('mobile-crosshair').style.top = mobileCY + 'px';
@@ -2849,20 +2825,69 @@
         document.getElementById('chart-container').addEventListener('pointerup', (e) => {
             if (isReplaySelecting) return;
             isDrawingDown = false;
-            if (!activeTool || lastChartData.length === 0) return;
-
-            if (hasDragged) return;
-
+            
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
+
+            // FEATURE: Direct Tap-to-Delete when NO tool is selected
+            if (!activeTool && !hasDragged && lastChartData.length > 0) {
+                let currX = e.clientX - rect.left; let currY = e.clientY - rect.top;
+                let time = chart.timeScale().coordinateToTime(currX);
+                let price = candleSeries.coordinateToPrice(currY);
+                
+                if (time && price) {
+                    const threshold = Math.abs(candleSeries.coordinateToPrice(currY) - candleSeries.coordinateToPrice(currY + 15));
+                    let toDeleteIdx = -1;
+                    for (let i = activeDrawings.length - 1; i >= 0; i--) {
+                        const d = activeDrawings[i];
+                        if (d.type === 'hline') {
+                            if (Math.abs(d.obj.options().price - price) < threshold) { toDeleteIdx = i; break; }
+                        } else if (d.type === 'hray') {
+                            const data = d.obj.data();
+                            if (data.length > 0 && time >= data[0].time && Math.abs(data[0].value - price) < threshold) { toDeleteIdx = i; break; }
+                        } else if (d.type === 'trendline' || d.type === 'fibo') {
+                            const data = d.obj.data();
+                            if (data.length === 2) {
+                                const t1 = data[0].time, p1 = data[0].value, t2 = data[1].time, p2 = data[1].value;
+                                if ((time >= t1 && time <= t2) || (time >= t2 && time <= t1)) {
+                                    const interpPrice = t1 !== t2 ? p1 + ((time - t1) / (t2 - t1)) * (p2 - p1) : p1;
+                                    if (Math.abs(interpPrice - price) < threshold) { toDeleteIdx = i; break; }
+                                }
+                            }
+                        }
+                    }
+                    if (toDeleteIdx > -1) {
+                        if (confirm("Delete this drawing?")) {
+                            const target = activeDrawings[toDeleteIdx];
+                            if (target.groupId) {
+                                const toRemove = activeDrawings.filter(d => d.groupId === target.groupId);
+                                toRemove.forEach(d => { if(d.type==='hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
+                                activeDrawings = activeDrawings.filter(d => d.groupId !== target.groupId);
+                            } else {
+                                if(target.type === 'hline') candleSeries.removePriceLine(target.obj); else chart.removeSeries(target.obj);
+                                activeDrawings.splice(toDeleteIdx, 1);
+                            }
+                            saveDrawingsToStorage();
+                        }
+                        return; 
+                    }
+                }
+            }
+
+            if (!activeTool || lastChartData.length === 0) return;
             
-            let targetX = isMobile ? mobileCX : (e.clientX - rect.left);
-            let targetY = isMobile ? mobileCY : (e.clientY - rect.top);
+            // CRITICAL: If the user was dragging to aim, DO NOT drop the anchor.
+            if (hasDragged) return; 
+
+            // At this point, it is a clean TAP. Drop the anchor!
+            let targetX = (isMobile && activeTool !== 'eraser') ? mobileCX : (e.clientX - rect.left);
+            let targetY = (isMobile && activeTool !== 'eraser') ? mobileCY : (e.clientY - rect.top);
 
             let time = chart.timeScale().coordinateToTime(targetX);
             let price = candleSeries.coordinateToPrice(targetY);
             if (!time || !price) return;
             
+            // Standard Eraser Tool Logic (Direct Touch)
             if (activeTool === 'eraser') {
                 const threshold = Math.abs(candleSeries.coordinateToPrice(targetY) - candleSeries.coordinateToPrice(targetY + 10)); 
                 let toDeleteIdx = -1;
@@ -2958,6 +2983,8 @@
                 }
             }
         });
+
+
         
         let axisMarkers = []; 
         
@@ -3376,8 +3403,10 @@
             setTimeout(() => { isSwappingStock = false; }, 50);
         }
 
-        async function loadSymbol(symbol) {
+                async function loadSymbol(symbol) {
+            document.getElementById('wl-list').classList.remove('edit-mode'); // Auto-hides 'X' buttons
             currentSymbol = symbol;
+            
             if (window.innerWidth <= 800 && sidebar.style.width !== '0px') toggleWl(); 
             renderWl();
             localStorage.setItem('tv-last-symbol', symbol);
