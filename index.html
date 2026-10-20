@@ -88,7 +88,8 @@
         #top-search { background: var(--ui-input-bg); border: 1px solid var(--ui-border); color: var(--ui-text); padding: 6px 10px; font-size: 13px; border-radius: 4px; width: 150px; outline: none; }
         #top-search:focus { border-color: #2962ff; }
 
-        #chart-container { flex: 1 1 0; min-height: 0; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+        /* Added touch-action: none to completely stop the browser from eating the swipe */
+        #chart-container { flex: 1 1 0; min-height: 0; position: relative; display: flex; flex-direction: column; overflow: hidden; touch-action: none; }
         #tv-chart { flex-grow: 1; outline: none; }
         
         #bottom-bar { height: 30px; background-color: var(--ui-bg-main); border-top: 1px solid var(--ui-border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
@@ -165,12 +166,9 @@
         .color-tag { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ui-text-muted); cursor: pointer; flex-shrink: 0;}
         .tag-none { background: transparent; } .tag-red { background: #f23645; border-color: #f23645; } .tag-blue { background: #2962ff; border-color: #2962ff; } .tag-green { background: #089981; border-color: #089981; } .tag-orange { background: #ff9800; border-color: #ff9800; }
         
-        .del-btn { color: var(--ui-text-muted); cursor: pointer; font-size: 12px; flex: 0 0 20px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; position: sticky; right: 0; background: inherit; z-index: 2; margin-left: 5px; }
-        /* Mobile: X strictly appears ONLY when Edit Mode is active */
+        .del-btn { color: var(--ui-text-muted); cursor: pointer; font-size: 12px; flex: 0 0 20px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; position: sticky; right: 0; background: inherit; z-index: 2; margin-left: 5px;}
         #wl-list.edit-mode .del-btn { opacity: 1; pointer-events: auto; color: #f23645; }
         .del-btn:hover { color: #f23645; }
-
-        /* PC: Shows the X naturally when you hover with a physical mouse */
         @media (hover: hover) and (pointer: fine) {
             .wl-item:hover .del-btn { opacity: 1; pointer-events: auto; }
         }
@@ -2475,19 +2473,24 @@
             if (isReplaySelecting) return;
             isDrawingDown = true; hasDragged = false;
             ptDownX = e.clientX; ptDownY = e.clientY;
+            if (activeTool) {
+                try { e.target.setPointerCapture(e.pointerId); } catch(err) {}
+            }
         });
 
         document.getElementById('chart-container').addEventListener('pointermove', (e) => {
+            if (!isDrawingDown) return;
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
-            if (isDrawingDown) {
-                if (Math.abs(e.clientX - ptDownX) > 4 || Math.abs(e.clientY - ptDownY) > 4) hasDragged = true;
+            
+            if (!hasDragged && (Math.abs(e.clientX - ptDownX) > 2 || Math.abs(e.clientY - ptDownY) > 2)) {
+                hasDragged = true;
             }
 
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
 
             if (activeTool && activeTool !== 'eraser' && isMobile) {
-                if (isDrawingDown && hasDragged) {
-                    const speed = 1.8; 
+                if (hasDragged) {
+                    const speed = 2.8; 
                     mobileCX += (e.clientX - ptDownX) * speed;
                     mobileCY += (e.clientY - ptDownY) * speed;
                     
@@ -2497,7 +2500,14 @@
                     ptDownX = e.clientX; 
                     ptDownY = e.clientY;
 
-                    document.getElementById('mobile-crosshair').style.left = mobileCX + 'px';
+                    let displayX = mobileCX;
+                    let time = chart.timeScale().coordinateToTime(mobileCX);
+                    if (time) {
+                        let snappedX = chart.timeScale().timeToCoordinate(time);
+                        if (snappedX !== null) displayX = snappedX;
+                    }
+
+                    document.getElementById('mobile-crosshair').style.left = displayX + 'px';
                     document.getElementById('mobile-crosshair').style.top = mobileCY + 'px';
                     updateDrawingPreview(mobileCX, mobileCY);
                 }
@@ -2517,7 +2527,6 @@
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
 
-            // Direct Tap-to-Delete when NO tool is selected
             if (!activeTool && !hasDragged && lastChartData.length > 0) {
                 let currX = e.clientX - rect.left; let currY = e.clientY - rect.top;
                 let time = chart.timeScale().coordinateToTime(currX);
