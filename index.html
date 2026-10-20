@@ -11,7 +11,6 @@
     <meta name="apple-mobile-web-app-title" content="Hafs Terminal">
     <meta name="application-name" content="Hafs Terminal">
     
-    
     <!-- Custom Pro Terminal Candlestick Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23131722'/><rect x='33' y='25' width='4' height='55' rx='2' fill='%23f23645'/><rect x='25' y='40' width='20' height='30' rx='4' fill='%23f23645'/><rect x='63' y='15' width='4' height='60' rx='2' fill='%23089981'/><rect x='55' y='25' width='20' height='35' rx='4' fill='%23089981'/></svg>">
     
@@ -26,14 +25,14 @@
         animation: flashGreen 0.5s ease-out;
         }
         :root {
-            /* Pure Neutral Dark Theme (No Navy/Blue Tint) */
+            /* Pure Neutral Dark Theme */
             --ui-bg-main: #080808; 
             --ui-bg-panel: #121212; 
             --ui-border: #242424;
             --ui-text: #d1d4dc;
             --ui-text-muted: #787b86;
             --ui-hover: #2a2a2a;
-            --ui-active-bg: #1e1e1e; /* SOLID hex color fixes scroll ghosting and muddy tint */
+            --ui-active-bg: #1e1e1e; 
             --ui-input-bg: #000000;
             --ui-dash-bg: rgba(18, 18, 18, 0.85);
         }
@@ -46,65 +45,31 @@
             --ui-text: #131722;
             --ui-text-muted: #434651;
             --ui-hover: #d0d4da;
-            --ui-active-bg: #eef0f4; /* SOLID hex color fixes scroll ghosting */
+            --ui-active-bg: #eef0f4; 
             --ui-input-bg: #ffffff;
             --ui-dash-bg: rgba(255, 255, 255, 0.85);
         }
 
-        /* --- FIX 6: Lock page bounds so virtual keyboard doesn't push the bottom off-screen --- */
-    html, body { 
-        margin: 0; 
-        padding: 0; 
-        background-color: var(--ui-bg-main); 
-        color: var(--ui-text); 
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-        font-variant-numeric: tabular-nums; 
-        display: flex; 
-        width: 100%;
-        height: 100%; 
-        height: 100dvh; 
-        overflow: hidden; 
-        position: fixed; 
-        top: 0; 
-        left: 0; 
-        box-sizing: border-box; 
-    }
+        html, body { 
+            margin: 0; padding: 0; background-color: var(--ui-bg-main); color: var(--ui-text); 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-variant-numeric: tabular-nums; display: flex; width: 100%; height: 100%; height: 100dvh; 
+            overflow: hidden; position: fixed; top: 0; left: 0; box-sizing: border-box; 
+        }
         
         .modal { 
-        display: none; 
-        position: fixed; 
-        top: 50%; 
-        left: 50%; 
-        transform: translate(-50%, -50%); 
-        background: var(--ui-bg-panel); 
-        border: 1px solid var(--ui-border); 
-        padding: 16px 20px; 
-        border-radius: 8px; 
-        z-index: 1200; /* Higher than watchlist (100) */
-        min-width: 280px; 
-        max-width: 90vw; 
-        max-height: 85vh; 
-        max-height: 85dvh; 
-        overflow-y: auto; /* Makes settings scrollable on short landscape screens */
-        box-sizing: border-box;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.6); 
-    }
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            background: var(--ui-bg-panel); border: 1px solid var(--ui-border); padding: 16px 20px; 
+            border-radius: 8px; z-index: 1200; min-width: 280px; max-width: 90vw; max-height: 85vh; 
+            max-height: 85dvh; overflow-y: auto; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.6); 
+        }
         .modal h3 { margin-top: 0; color: var(--ui-text); border-bottom: 1px solid var(--ui-border); padding-bottom: 10px; }
         .modal-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 13px; }
         .modal-row input[type="color"] { background: none; border: none; cursor: pointer; height: 25px; width: 40px; padding: 0; }
         .modal-row select { background: var(--ui-input-bg); color: var(--ui-text); border: 1px solid var(--ui-border); padding: 4px; border-radius: 3px; font-size: 12px; cursor: pointer; }
         .modal-btn { background: #2962ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 5px; }
         .modal-btn.reset { background: transparent; border: 1px solid #f23645; color: #f23645; }
-        #modal-overlay { 
-        display: none; 
-        position: fixed; 
-        top: 0; 
-        left: 0; 
-        width: 100%; 
-        height: 100%; 
-        background: rgba(0,0,0,0.6); 
-        z-index: 1100; /* Sits above workspace & watchlist, below modal */
-    }
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1100; }
 
         #toolbar-wrapper { display: flex; border-right: 1px solid var(--ui-border); z-index: 10; background: var(--ui-bg-panel); }
         #toolbar { width: 38px; display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 8px; transition: width 0.2s; overflow: hidden; }
@@ -136,130 +101,40 @@
         .eye-btn { pointer-events: auto; background: transparent; border: none; color: var(--ui-text-muted); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
         .eye-btn:hover { background: var(--ui-hover); color: var(--ui-text); }
         .eye-btn.hidden-mode { opacity: 0.3; filter: grayscale(100%); }
-        /* --- Dynamic Pane Headers (Hover to Close) --- */
-        .pane-header { 
-            position: absolute; 
-            top: 6px; 
-            left: 12px; 
-            z-index: 20; 
-            font-size: 12px; 
-            font-family: monospace; 
-            pointer-events: none; 
-            display: flex; 
-            align-items: center; 
-        }
-        .pane-title { 
-            pointer-events: auto; 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            background: transparent; 
-            color: inherit; 
-            padding: 2px 0; 
-        }
-        /* FIX: Removed the muddy shadow for grey backgrounds */
+        
+        .pane-header { position: absolute; top: 6px; left: 12px; z-index: 20; font-size: 12px; font-family: monospace; pointer-events: none; display: flex; align-items: center; }
+        .pane-title { pointer-events: auto; display: flex; align-items: center; gap: 8px; background: transparent; color: inherit; padding: 2px 0; }
         body:not([data-theme="light"]) .pane-header span { text-shadow: none; }
         
         .pane-controls { display: flex; opacity: 0; pointer-events: none; transition: opacity 0.2s; gap: 4px; margin-left: 6px; }
         .pane-title:hover .pane-controls, .pane-title:active .pane-controls { opacity: 1; pointer-events: auto; }
-
         .pane-btn { background: transparent; border: none; color: #434651; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 4px; transition: all 0.2s; }
         .pane-btn:hover { background: rgba(0,0,0,0.1); color: #131722; }
         .pane-btn.close:hover { background: #f23645; color: #ffffff; }
 
-        #ohlc-legend { 
-            position: absolute; 
-            top: 34px; 
-            left: 12px; 
-            z-index: 20; 
-            font-size: 12px; 
-            font-family: monospace; 
-            display: flex; 
-            gap: 8px; 
-            background: transparent; 
-            border: none; 
-            padding: 2px 0; 
-            pointer-events: none; 
-            max-width: calc(100% - 24px); 
-            overflow: hidden; 
-            white-space: nowrap; 
-            color: var(--ui-text); 
-        }
-       /* FIX: Removed the muddy shadow for grey backgrounds */
+        #ohlc-legend { position: absolute; top: 34px; left: 12px; z-index: 20; font-size: 12px; font-family: monospace; display: flex; gap: 8px; background: transparent; border: none; padding: 2px 0; pointer-events: none; max-width: calc(100% - 24px); overflow: hidden; white-space: nowrap; color: var(--ui-text); }
         body:not([data-theme="light"]) #ohlc-legend span { text-shadow: none; }
         .ohlc-val { font-weight: bold; }
         
-        #dashboard { 
-            position: absolute; 
-            bottom: 15px; /* Snaps it back to the bottom sub-pane */
-            left: 15px; 
-            background: var(--ui-dash-bg); 
-            border: 1px solid var(--ui-border); 
-            padding: 8px 12px; 
-            border-radius: 4px; 
-            z-index: 25; 
-            font-size: 11px; 
-            pointer-events: none; 
-            transition: transform 0.2s; 
-            transform-origin: bottom left; 
-            min-width: 110px; 
-            color: var(--ui-text);
-        }
+        #dashboard { position: absolute; bottom: 15px; left: 15px; background: var(--ui-dash-bg); border: 1px solid var(--ui-border); padding: 8px 12px; border-radius: 4px; z-index: 25; font-size: 11px; pointer-events: none; transition: transform 0.2s; transform-origin: bottom left; min-width: 110px; color: var(--ui-text); }
         .dash-row { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 4px; }
         .dash-row:last-child { margin-bottom: 0; }
-        :root {
-            --dash-val-col: #ffffff; /* Pure white for values in Dark Mode */
-            --dash-lbl-col: #a3a6af; /* Brighter grey for labels in Dark Mode */
-        }
-        [data-theme="light"] {
-            --dash-val-col: #000000;
-            --dash-lbl-col: #434651;
-        }
+        :root { --dash-val-col: #ffffff; --dash-lbl-col: #a3a6af; }
+        [data-theme="light"] { --dash-val-col: #000000; --dash-lbl-col: #434651; }
         .dash-label { color: var(--dash-lbl-col); font-weight: 800; letter-spacing: 0.5px; }
         .dash-val { font-weight: 900; text-align: right; color: var(--dash-val-col); letter-spacing: 0.5px; }
-        
-        /* Adds a crisp, hard shadow to ALL dashboard text in Dark Mode */
-        body:not([data-theme="light"]) .dash-label,
-        body:not([data-theme="light"]) .dash-val {
-            text-shadow: 0px 1px 4px rgba(0, 0, 0, 1.0);
-        }
+        body:not([data-theme="light"]) .dash-label, body:not([data-theme="light"]) .dash-val { text-shadow: 0px 1px 4px rgba(0, 0, 0, 1.0); }
 
         .axis-btn { background: var(--ui-border); border: 1px solid var(--ui-border); color: var(--ui-text); padding: 0; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 4px; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
         .axis-btn:hover { background: var(--ui-hover); color: var(--ui-text); }
         .axis-btn.active { color: #ffffff; background: #2962ff; border-color: #2962ff; }
 
-        #btn-reset { 
-            position: absolute; 
-            bottom: 45px; /* Dropped slightly closer to the axis */
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: var(--ui-bg-panel); 
-            color: var(--ui-text); 
-            border: 1px solid var(--ui-border); 
-            width: 30px;  /* Shrunk from 40px */
-            height: 30px; /* Shrunk from 40px */
-            border-radius: 50%; 
-            font-size: 16px; /* Shrunk icon size */
-            cursor: pointer; 
-            z-index: 20; 
-            display: none; 
-            align-items: center; 
-            justify-content: center; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: all 0.2s ease;
-        }
-        #btn-reset:hover { 
-            background: #2962ff; 
-            color: #ffffff; 
-            border-color: #2962ff; 
-            transform: translateX(-50%) scale(1.1);
-        }
+        #btn-reset { position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background: var(--ui-bg-panel); color: var(--ui-text); border: 1px solid var(--ui-border); width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; z-index: 20; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: all 0.2s ease; }
+        #btn-reset:hover { background: #2962ff; color: #ffffff; border-color: #2962ff; transform: translateX(-50%) scale(1.1); }
 
         #resizer { width: 5px; background: var(--ui-border); cursor: col-resize; flex-shrink: 0; z-index: 15; }
         #resizer:hover { background: #2962ff; }
         
-        /* Restored to 320px wide so symbols are fully readable */
-        /* Tightened overall width to 260px to maximize chart canvas area */
         #watchlist { width: 260px; background-color: var(--ui-bg-panel); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
         .wl-header { padding: 10px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--ui-border); }
         .wl-list-mgr { display: flex; justify-content: space-between; align-items: center; }
@@ -269,205 +144,82 @@
         
         #wl-list { flex-grow: 1; overflow: auto; position: relative; }
         
-        /* FIX: Enforced strict row heights so sticky background walls cover 100% of the vertical space */
         .wl-cols { display: flex; font-size: 11px; color: var(--ui-text-muted); border-bottom: 1px solid var(--ui-border); background: var(--ui-bg-panel); min-width: max-content; position: sticky; top: 0; z-index: 10; height: 24px; line-height: 24px; align-items: stretch; }
         .wl-item { cursor: pointer; display: flex; align-items: stretch; border-bottom: 1px solid var(--ui-border); border-left: 3px solid transparent; font-size: 12px; min-width: max-content; background: var(--ui-bg-panel); transition: background 0.1s; height: 28px; line-height: 28px; scroll-margin-top: 26px; }
         .wl-item.active { background: var(--ui-active-bg); border-left: 3px solid #2962ff; }
         .wl-item:hover { background: var(--ui-hover); }
 
-        /* The Sticky Horizontal Scroll Matrix */
         .item-color, .col-color { flex: 0 0 20px; position: sticky; left: 0; background: inherit; display: flex; align-items: center; justify-content: center; z-index: 2; }
         .item-sym, .col-sym { flex: 0 0 70px; position: sticky; left: 20px; background: inherit; padding-left: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; font-size: 11.5px; letter-spacing: 0.3px; cursor: pointer; user-select: none; z-index: 2; display: block; }
         .item-cmp, .col-cmp { flex: 0 0 50px; position: sticky; left: 90px; background: inherit; text-align: right; padding-right: 6px; border-right: 1px solid var(--ui-border); cursor: pointer; user-select: none; font-variant-numeric: tabular-nums; z-index: 2; display: block; }
         
-        /* Ensure headers stay strictly above items when scrolling down */
         .col-color, .col-sym, .col-cmp { z-index: 12 !important; background: var(--ui-bg-panel); }
 
-        /* The Scrollable Analytics Right Side */
         .col-chg, .item-chg { flex: 0 0 58px; text-align: right; cursor: pointer; user-select: none; padding-right: 4px; font-variant-numeric: tabular-nums; display: block; }
         .col-tag, .item-flags { flex: 0 0 30px; text-align: center; cursor: pointer; user-select: none; display: flex; justify-content: center; align-items: center; }
         .col-bp, .item-bp { flex: 0 0 35px; text-align: right; cursor: pointer; user-select: none; padding-right: 8px; font-variant-numeric: tabular-nums; display: block; }
         .col-rvol, .item-rvol { flex: 0 0 45px; text-align: right; cursor: pointer; user-select: none; padding-right: 8px; font-variant-numeric: tabular-nums; display: block; }
         .col-ud, .item-ud { flex: 0 0 40px; text-align: right; cursor: pointer; user-select: none; padding-right: 8px; font-variant-numeric: tabular-nums; display: block; }
 
-        /* Badges & Tags */
         .sig-badge { font-size: 10px; font-weight: bold; padding: 0; border-radius: 3px; color: #fff; display: flex; align-items: center; justify-content: center; width: 15px; height: 15px; cursor: pointer;}
         .color-tag { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ui-text-muted); cursor: pointer; flex-shrink: 0;}
         .tag-none { background: transparent; } .tag-red { background: #f23645; border-color: #f23645; } .tag-blue { background: #2962ff; border-color: #2962ff; } .tag-green { background: #089981; border-color: #089981; } .tag-orange { background: #ff9800; border-color: #ff9800; }
         
-        /* The Hover-Reveal Delete Button */
-        .del-btn { color: var(--ui-text-muted); cursor: pointer; font-size: 12px; flex: 0 0 20px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; position: sticky; right: 0; background: inherit; z-index: 2; margin-left: 5px;}
-               /* Shows X on PC hover, or on Mobile when Edit Mode is active */
-        .wl-item:hover .del-btn, #wl-list.edit-mode .del-btn { opacity: 1; pointer-events: auto; color: #f23645; }
-        
+        .del-btn { color: var(--ui-text-muted); cursor: pointer; font-size: 12px; flex: 0 0 20px; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; position: sticky; right: 0; background: inherit; z-index: 2; margin-left: 5px; }
+        /* Mobile: X strictly appears ONLY when Edit Mode is active */
+        #wl-list.edit-mode .del-btn { opacity: 1; pointer-events: auto; color: #f23645; }
         .del-btn:hover { color: #f23645; }
 
-        /* Measure Ruler UI */
+        /* PC: Shows the X naturally when you hover with a physical mouse */
+        @media (hover: hover) and (pointer: fine) {
+            .wl-item:hover .del-btn { opacity: 1; pointer-events: auto; }
+        }
+
         #measure-overlay { position: absolute; display: none; background: rgba(41, 98, 255, 0.1); border: 1px dashed #2962ff; pointer-events: none; z-index: 50; }
         #measure-badge { position: absolute; background: #2962ff; color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; pointer-events: none; display: none; z-index: 51; line-height: 1.4; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        /* ---- ADD THIS AT THE BOTTOM OF YOUR CSS ---- */
 
-        /* 1. Make all scrollbars inside the watchlist ultra-thin and transparent by default */
-        #watchlist * {
-        scrollbar-width: thin;
-        scrollbar-color: transparent transparent;
-        }
+        #watchlist * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+        #watchlist *::-webkit-scrollbar { width: 4px; }
+        #watchlist *::-webkit-scrollbar-track { background: transparent; }
+        #watchlist *::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+        #watchlist:hover * { scrollbar-color: rgba(120, 120, 120, 0.45) transparent; }
+        #watchlist:hover *::-webkit-scrollbar-thumb { background: rgba(120, 120, 120, 0.45); }
+        #watchlist *::-webkit-scrollbar-thumb:hover { background: rgba(120, 120, 120, 0.75); }
 
-        #watchlist *::-webkit-scrollbar {
-        width: 4px;
-        }
-
-        #watchlist *::-webkit-scrollbar-track {
-        background: transparent;
-        }
-
-        #watchlist *::-webkit-scrollbar-thumb {
-        background: transparent;
-        border-radius: 4px;
-        }
-
-        /* 2. Only reveal the scrollbar thumb when hovering over the watchlist area */
-        #watchlist:hover * {
-            scrollbar-color: rgba(120, 120, 120, 0.45) transparent;
-        }
-
-        #watchlist:hover *::-webkit-scrollbar-thumb {
-            background: rgba(120, 120, 120, 0.45);
-        }
-
-        #watchlist *::-webkit-scrollbar-thumb:hover {
-            background: rgba(120, 120, 120, 0.75);
-        }
-
-        /* 3. Shift the close button slightly to the left so the scrollbar never overlaps it */
-        .watchlist-item {
-            padding-right: 6px; 
-        }
-        .pane-resizer { 
-            height: 5px; 
-            margin: -2px 0; 
-            background: transparent; 
-            cursor: row-resize; 
-            flex-shrink: 0; 
-            z-index: 50; 
-            position: relative; 
-        }
-
-        .pane-resizer::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 0;
-            width: 100%;
-            height: 1px; 
-            background: var(--ui-border);
-            transition: background 0.2s ease;
-        }
-
-        .pane-resizer:hover::after { 
-            background: #2962ff; 
-        }
+        .watchlist-item { padding-right: 6px; }
+        .pane-resizer { height: 5px; margin: -2px 0; background: transparent; cursor: row-resize; flex-shrink: 0; z-index: 50; position: relative; }
+        .pane-resizer::after { content: ''; position: absolute; top: 2px; left: 0; width: 100%; height: 1px; background: var(--ui-border); transition: background 0.2s ease; }
+        .pane-resizer:hover::after { background: #2962ff; }
 
         .sub-hidden { display: none !important; }
-                /* Custom Right-Click Context Menu */
-        #wl-context-menu {
-            display: none;
-            position: fixed;
-            background: var(--ui-bg-panel);
-            border: 1px solid var(--ui-border);
-            border-radius: 4px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            z-index: 1000;
-            min-width: 130px;
-            padding: 4px 0;
-            font-size: 12px;
-        }
-        .ctx-item {
-            padding: 8px 12px;
-            cursor: pointer;
-            color: var(--ui-text);
-        }
-        .ctx-item:hover {
-            background: var(--ui-hover);
-            color: #2962ff;
-        }
-        .ctx-header {
-            padding: 4px 12px;
-            font-weight: bold;
-            color: var(--ui-text-muted);
-            border-bottom: 1px solid var(--ui-border);
-            margin-bottom: 4px;
-            font-size: 11px;
-        }
         
-        /* EMA Toggle Hover Logic */
+        #wl-context-menu { display: none; position: fixed; background: var(--ui-bg-panel); border: 1px solid var(--ui-border); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 1000; min-width: 130px; padding: 4px 0; font-size: 12px; }
+        .ctx-item { padding: 8px 12px; cursor: pointer; color: var(--ui-text); }
+        .ctx-item:hover { background: var(--ui-hover); color: #2962ff; }
+        .ctx-header { padding: 4px 12px; font-weight: bold; color: var(--ui-text-muted); border-bottom: 1px solid var(--ui-border); margin-bottom: 4px; font-size: 11px; }
+        
         #btn-toggle-emas { opacity: 0; pointer-events: none; transition: opacity 0.2s; background: transparent; border: none; cursor: pointer; font-size: 14px; }
         #title-wrapper:hover #btn-toggle-emas { pointer-events: auto; }
         #title-wrapper:hover #btn-toggle-emas.emas-on { opacity: 0.8; }
         #title-wrapper:hover #btn-toggle-emas.emas-off { opacity: 0.3; filter: grayscale(100%); }
-        /* --- MOBILE RESPONSIVE OVERRIDES --- */
+
         @media (max-width: 800px) {
-            /* Scrollable Top and Bottom Bars */
-            #top-bar, #bottom-bar {
-                overflow-x: auto;
-                white-space: nowrap;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none; /* Firefox */
-            }
-            #top-bar::-webkit-scrollbar, #bottom-bar::-webkit-scrollbar {
-                display: none; /* Safari/Chrome */
-            }
-
-            /* Floating Watchlist Overlay */
-            #watchlist {
-                position: absolute;
-                right: 0;
-                top: 35px; 
-                bottom: 30px; 
-                width: 0px; 
-                max-width: 85%; 
-                z-index: 100;
-                box-shadow: -5px 0 15px rgba(0,0,0,0.5);
-            }
-            
-            /* Hide desktop resizers */
+            #top-bar, #bottom-bar { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+            #top-bar::-webkit-scrollbar, #bottom-bar::-webkit-scrollbar { display: none; }
+            #watchlist { position: absolute; right: 0; top: 35px; bottom: 30px; width: 0px; max-width: 85%; z-index: 100; box-shadow: -5px 0 15px rgba(0,0,0,0.5); }
             #resizer { display: none; }
-            
-            /* Compact the dashboard to prevent screen clutter */
-            #dashboard {
-                transform: scale(0.75);
-                bottom: 40px;
-                left: 5px;
-            }
-
-            /* Ultra-compact OHLCV on mobile screens */
-            #ohlc-legend {
-                top: 32px;
-                left: 8px;
-                font-size: 9.5px;
-                gap: 5px;
-                padding: 1px 5px;
-                max-width: calc(100% - 16px);
-            }
+            #dashboard { transform: scale(0.75); bottom: 40px; left: 5px; }
+            #ohlc-legend { top: 32px; left: 8px; font-size: 9.5px; gap: 5px; padding: 1px 5px; max-width: calc(100% - 16px); }
         }
 
-        /* --- Mobile Landscape Compaction --- */
         @media (max-width: 950px) and (orientation: landscape) {
             #top-bar { height: 30px; }
             #bottom-bar { height: 26px; }
             #dashboard { bottom: 30px; transform: scale(0.65); left: 5px; }
             .nav-btn, .tf-btn, .range-btn { padding: 1px 4px; font-size: 11px; }
-
-            #ohlc-legend {
-                top: 29px;
-                left: 8px;
-                font-size: 8.5px;
-                gap: 4px;
-                padding: 1px 4px;
-            }
+            #ohlc-legend { top: 29px; left: 8px; font-size: 8.5px; gap: 4px; padding: 1px 4px; }
         }
 
-        /* Compact modals when vertical space is under 520px (Landscape phone) */
         @media (max-height: 520px) {
             .modal { max-height: 92dvh; padding: 10px 14px; }
             .modal h3 { margin: 0 0 6px 0; padding-bottom: 4px; font-size: 13px; }
@@ -478,7 +230,6 @@
 </head>
 <body>
 
-    <!-- Datalist populated on load ONLY with Watchlist items -->
     <datalist id="watchlist-stocks"></datalist>
 
     <div id="modal-overlay" onclick="closeSettings()"></div>
@@ -523,6 +274,7 @@
         <button class="modal-btn" onclick="saveSettings()">Save Configuration</button>
         <button class="modal-btn reset" onclick="resetSettings()">Reset Defaults</button>
     </div>
+    
     <div id="filter-modal" class="modal">
         <h3>Advanced Screener</h3>
         <div class="modal-row"><span>Min Price (₹)</span><input type="number" id="f-min-p" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
@@ -543,7 +295,6 @@
         <button class="modal-btn reset" onclick="clearFilters()">Clear Filters</button>
     </div>
 
-    <!-- Indicator Manager Modal -->
     <div id="indicator-modal" class="modal">
         <h3>Indicators</h3>
         <div class="modal-row"><span>MTF Core (Algorithm)</span><input type="checkbox" id="ind-mtf"></div>
@@ -601,7 +352,6 @@
     <!-- Main Workspace -->
     <div id="main-workspace">
         <div id="top-bar">
-            <!-- Left Side: Search + 20px Gap + Stock Navigation -->
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div class="nav-grp">
                     <input type="text" id="top-search" list="watchlist-stocks" placeholder="Search Watchlist..." oninput="checkSearchInput(event)" onkeypress="if(event.key==='Enter') searchAndAdd()">
@@ -614,7 +364,6 @@
                 </div>
             </div>
             
-            <!-- Right Side: Replay Button + Tools -->
             <div class="nav-grp">
                 <button class="nav-btn" id="btn-replay" onclick="toggleReplay()" title="Replay Mode" style="font-size: 16px; font-weight: bold; color: #2962ff; border-color: transparent; transition: all 0.2s;">⏮</button>
                 <button class="nav-btn" id="btn-replay-play" onclick="togglePlayPause()" title="Play / Pause (Spacebar)" style="display: none; font-size: 14px; color: #089981; border-color: transparent;">▶</button>
@@ -642,7 +391,7 @@
         </div>
         
         <div id="chart-container">
-        	            <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
+            <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
                 <div id="chart-color-tag" class="color-tag tag-none" onclick="if(currentSymbol) cycleColor(event, currentSymbol)" style="width: 14px; height: 14px; transition: transform 0.1s; cursor: pointer;" title="Tap to cycle color"></div>
                 <div id="chart-sig-badge" class="sig-badge" style="display: none; width: 16px; height: 16px; font-size: 11px; cursor: default;">-</div>
                 <div id="company-name" style="position: relative; top: 0; left: 0;">-</div>
@@ -655,7 +404,6 @@
                 <div style="position: absolute; top: -2000px; left: 0; width: 1px; height: 4000px; border-left: 1px dashed #2962ff;"></div>
                 <div style="position: absolute; top: -4px; left: -4px; width: 8px; height: 8px; background: rgba(41, 98, 255, 0.2); border: 1.5px solid #2962ff; border-radius: 50%;"></div>
             </div>
-
 
             <div id="ohlc-legend">
                 <span>O <span class="ohlc-val" id="leg-o">0.00</span></span>
@@ -670,7 +418,6 @@
             <div id="measure-overlay"></div>
             <div id="measure-badge"></div>
             
-            <!-- Dynamic Panes Factory Container -->
             <div id="panes-container" style="display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; background: transparent; overflow: hidden;"></div>
             
             <button id="btn-reset" onclick="triggerNativeAuto()" title="Reset Chart View">↻</button>
@@ -696,7 +443,6 @@
             
             <div style="flex-grow: 1;"></div>
             
-            <!-- A and L Buttons placed horizontally at the right end of the bottom bar -->
             <div style="display: flex; gap: 5px; margin-right: 15px; align-items: center;">
                 <button class="axis-btn active" id="btn-auto" onclick="triggerNativeAuto()" title="Auto Scale">A</button>
                 <button class="axis-btn active" id="btn-log" onclick="toggleLog()" title="Log Scale">L</button>
@@ -748,23 +494,19 @@
             activeListName = Object.keys(watchlistsData)[0] || "Default";
         }
         
-        // Force the active list to be a valid array to prevent crashes
         if (!Array.isArray(watchlistsData[activeListName])) {
             watchlistsData[activeListName] = [];
         }
         
         let watchlist = watchlistsData[activeListName];
         
-        // Save the repaired state back to the browser
         localStorage.setItem('tv-watchlists-v1', JSON.stringify(watchlistsData));
         localStorage.setItem('tv-active-list', activeListName);
 
-        //let currentSymbol = null; // No auto-load on startup
         let currentSymbol = '';
         let zerodhaTokens = {}; 
-        let cacheVersion = Date.now(); // Tracks when data was last updated
+        let cacheVersion = Date.now(); 
 
-        // --- SMART ENVIRONMENT CHECK ---
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 
         async function fetchZerodhaTokens() {
@@ -775,10 +517,8 @@
             } catch (err) { console.error("Failed to load Zerodha tokens", err); }
         }
         
-        // Call it right when the app boots up
         fetchZerodhaTokens();
 
-        // --- UI Theme Initialization ---
         let uiTheme = localStorage.getItem('tv-ui-theme') || 'dark';
         if (uiTheme === 'light') document.body.setAttribute('data-theme', 'light');
 
@@ -825,9 +565,9 @@
             document.getElementById('f-sig-trap').checked = false;
             applyFilters();
         }
-        // Load saved sort preference, default to % Chg (Highest to Lowest)
+
         let sortMode = localStorage.getItem('tv-sort-mode') || 'chg';
-        let sortAsc = localStorage.getItem('tv-sort-asc') !== 'false'; // Defaults to true
+        let sortAsc = localStorage.getItem('tv-sort-asc') !== 'false'; 
         function getSavedColor(sym) {
             const colorLists = {
                 '🔴 Red List': 'red',
@@ -844,24 +584,20 @@
         }
         let currentTimeframe = 'D'; 
         
-        // --- EMA TOGGLE STATE & LOGIC ---
-        let emasVisible = localStorage.getItem('tv-emas-visible') !== 'false'; // Defaults to true
+        let emasVisible = localStorage.getItem('tv-emas-visible') !== 'false'; 
         
         function toggleEmas() {
             emasVisible = !emasVisible;
             localStorage.setItem('tv-emas-visible', emasVisible);
             
-            // Switch CSS class for hover states
             const btn = document.getElementById('btn-toggle-emas');
             btn.className = emasVisible ? 'emas-on' : 'emas-off';
             
-            // Instantly apply visibility to all EMAs without deleting them
             if (ema9) ema9.applyOptions({ visible: emasVisible });
             if (ema21) ema21.applyOptions({ visible: emasVisible });
             if (ema50) ema50.applyOptions({ visible: emasVisible });
             if (ema200) ema200.applyOptions({ visible: emasVisible });
             
-            // Also toggle the EMA crossover lines if they are active
             if (typeof ema12 !== 'undefined' && activeIndicators.includes('ema_cross')) ema12.applyOptions({ visible: emasVisible });
             if (typeof ema26 !== 'undefined' && activeIndicators.includes('ema_cross')) ema26.applyOptions({ visible: emasVisible });
         }
@@ -870,17 +606,13 @@
         let lastChartData = []; 
         let volumeMap = new Map(); 
         
-        // Holds exact list of CSV files in historical_data/
         let localAvailableStocks = [];
         
-        // --- REPLAY STATE ---
         let isReplaySelecting = false;
         let isReplayActive = false;
         let replayIndex = -1;
         let replayTimer = null;
-        let replaySpeedMs = 100; // 100ms per candle = 10 candles per second (butter smooth)
-        
-        // --- Chart Color Defaults ---
+        let replaySpeedMs = 100; 
         
         const defSet = { bgTop: '#d0d4dd', bgBottom: '#d0d4dd', grid: '#c8ccd6', text: '#131722', upB: '#66bb6a', upW: '#000000', dnB: '#000000', dnW: '#000000' };
         let s_bg_top = localStorage.getItem('c_bg_top') || defSet.bgTop;
@@ -899,16 +631,15 @@
         let s_show_full = localStorage.getItem('c_show_full') !== 'false';
         let s_show_atr_line = localStorage.getItem('c_show_atr_line') !== 'false';
         let s_atr_color = localStorage.getItem('c_atr_color') || '#2962ff';
-        let s_d_color = localStorage.getItem('c_d_color') || '#0033cc'; // Deep Blue
-        let s_w_color = localStorage.getItem('c_w_color') || '#006400'; // Dark Forest Green
-        let s_m_color = localStorage.getItem('c_m_color') || '#b30000'; // Deep Crimson Red
+        let s_d_color = localStorage.getItem('c_d_color') || '#0033cc'; 
+        let s_w_color = localStorage.getItem('c_w_color') || '#006400'; 
+        let s_m_color = localStorage.getItem('c_m_color') || '#b30000'; 
         let s_show_sz = localStorage.getItem('c_show_sz') !== 'false';
         let s_show_priceline = localStorage.getItem('c_show_priceline') !== 'false';
         let s_show_sig_text = localStorage.getItem('c_show_sig_text') !== 'false';
         document.getElementById('dashboard').style.transform = `scale(${dashScale})`;
         const numFormat = new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 });
 
-        // --- 2. RESIZER & UI OBSERVERS ---
         const resizer = document.getElementById('resizer');
         const sidebar = document.getElementById('watchlist');
         let isResizing = false;
@@ -924,18 +655,16 @@
                 isResizing = false; 
                 document.body.style.cursor = 'default'; 
                 
-                // Correctly resize BOTH charts to their actual flexbox heights, not the parent container height
                 const topCont = document.getElementById('tv-chart');
                 const subCont = document.getElementById('tv-sub-chart');
                 
                 chart.resize(topCont.clientWidth, topCont.clientHeight);
-                if (!subCont.classList.contains('sub-hidden')) {
+                if (subCont && !subCont.classList.contains('sub-hidden')) {
                     subChart.resize(subCont.clientWidth, subCont.clientHeight);
                 }
             }
         });
 
-        // Observe workspace container
         const resizeObserver = new ResizeObserver(() => {
             if (!isResizing && !isPaneResizing) {
                 resizeAllCharts();
@@ -943,7 +672,6 @@
         });
         resizeObserver.observe(document.getElementById('main-workspace'));
 
-        // Instant re-adaptation when rotating phone or resizing browser
         window.addEventListener('resize', () => {
             resizeAllCharts();
             setTimeout(resizeAllCharts, 120);
@@ -955,18 +683,17 @@
        
         let savedWlWidth = '260px';
         function toggleWl() { 
-        sidebar.style.transition = 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'; 
-        const isMobile = window.innerWidth <= 800;
-        const targetWidth = isMobile ? '85%' : '260px';
+            sidebar.style.transition = 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'; 
+            const isMobile = window.innerWidth <= 800;
+            const targetWidth = isMobile ? '85%' : '260px';
 
-        if (sidebar.style.width === '0px' || !sidebar.style.width) {
-            sidebar.style.width = targetWidth;
-        } else {
-            sidebar.style.width = '0px';
+            if (sidebar.style.width === '0px' || !sidebar.style.width) {
+                sidebar.style.width = targetWidth;
+            } else {
+                sidebar.style.width = '0px';
+            }
         }
-    }
         
-        // --- MISSING TOOLBAR TOGGLE FUNCTION ---
         function toggleToolbar() { 
             const tb = document.getElementById('toolbar');
             const btn = document.getElementById('toolbar-toggle');
@@ -983,7 +710,6 @@
                 localStorage.setItem('tv-toolbar-collapsed', 'false');
             }
             
-            // Trigger proper chart resize for all active panes after animation finishes (200ms)
             setTimeout(() => { 
                 resizeAllCharts();
             }, 200);
@@ -1024,13 +750,12 @@
             document.getElementById('indicator-modal').style.display = 'none'; 
         }
 
-        // --- INDICATOR STATE MANAGER (PHASE 1 & 5) ---
         let activeIndicators = [];
         let indCfg = { rsi_len: 14, rsi_col: '#2962ff', macd_f: 10, macd_s: 26, macd_sig: 9, macd_col: '#2962ff', macd_sig_col: '#ff9800', vol_ma: 50, line_width: 2 }
         try {
             activeIndicators = JSON.parse(localStorage.getItem('tv-active-indicators')) || ['mtf_core', 'vol_rsi'];
             const savedCfg = JSON.parse(localStorage.getItem('tv-ind-cfg'));
-            if (savedCfg) indCfg = { ...indCfg, ...savedCfg }; // Merge to preserve new defaults
+            if (savedCfg) indCfg = { ...indCfg, ...savedCfg }; 
         } catch(e) {
             localStorage.setItem('tv-active-indicators', JSON.stringify(activeIndicators));
         }
@@ -1091,24 +816,17 @@
             if (currentSymbol) loadSymbol(currentSymbol);
         }
 
-        // --- DYNAMIC PANE UI CONTROLS ---
         function closeIndicatorPane(indicatorId) {
-            // 1. Remove from state array
             activeIndicators = activeIndicators.filter(id => id !== indicatorId);
             localStorage.setItem('tv-active-indicators', JSON.stringify(activeIndicators));
-            
-            // 2. Sync the modal checkbox so it stays accurate
             const checkbox = document.getElementById('ind-' + indicatorId.replace('_', '-'));
             if (checkbox) checkbox.checked = false;
-            
-            // 3. Trigger redraw to process the collapse
             if (currentSymbol) loadSymbol(currentSymbol);
         }
 
         function togglePaneEye(indicatorId, btnElement) {
             const pane = dynamicPanes[indicatorId];
             if (!pane) return;
-            
             const isHidden = btnElement.classList.contains('hidden-mode');
             if (isHidden) {
                 btnElement.classList.remove('hidden-mode');
@@ -1118,6 +836,7 @@
                 Object.values(pane.series).forEach(s => s.applyOptions({ visible: false }));
             }
         }
+
         function saveSettings() {
             s_bg_top = document.getElementById('s-bg-top').value; s_bg_bottom = document.getElementById('s-bg-bottom').value;
             s_grid = document.getElementById('s-grid').value; s_text = document.getElementById('s-text').value;
@@ -1159,9 +878,9 @@
             localStorage.setItem('c_ray_width', s_ray_width);
             applySettings(); 
             closeSettings();
-            // Instantly re-render the chart from the 0ms RAM cache to apply marker toggles
             if (currentSymbol) loadSymbol(currentSymbol); 
         }
+
         function resetSettings() {
             document.getElementById('s-bg-top').value = defSet.bgTop; document.getElementById('s-bg-bottom').value = defSet.bgBottom;
             document.getElementById('s-grid').value = defSet.grid; document.getElementById('s-text').value = defSet.text;
@@ -1183,20 +902,17 @@
             document.getElementById('s-show-priceline').checked = true;
             document.getElementById('s-show-sig-text').checked = true;
             
-            // Wipe the saved pane layout memory
             window.customBottomPct = null;
             localStorage.removeItem('tv-pane-pct');
-            updateTimeScaleVisibility(); // Force UI to instantly snap back to default layout
-            
+            updateTimeScaleVisibility(); 
             saveSettings();
         }
+
         function applySettings() {
-            // Apply theme to Top Chart
             chart.applyOptions({ 
                 layout: { background: { type: 'gradient', topColor: s_bg_top, bottomColor: s_bg_bottom }, textColor: s_text }, 
                 grid: { vertLines: { color: s_grid }, horzLines: { color: s_grid } }
             });
-            // Apply theme to all Dynamic Panes
             Object.values(dynamicPanes).forEach(p => {
                 p.chart.applyOptions({ 
                     layout: { background: { type: 'gradient', topColor: s_bg_top, bottomColor: s_bg_bottom }, textColor: s_text }, 
@@ -1207,7 +923,6 @@
             candleSeries.applyOptions({ upColor: s_up_b, downColor: s_dn_b, borderVisible: true, borderUpColor: s_up_w, borderDownColor: s_dn_w, wickUpColor: s_up_w, wickDownColor: s_dn_w, priceLineVisible: s_show_priceline });
             atrSeries.applyOptions({ color: s_atr_color, visible: s_show_atr_line });
             
-            // Sync all floating text colors
             document.getElementById('ohlc-legend').style.color = s_text;
             document.getElementById('company-name').style.color = s_text;
             document.querySelectorAll('.pane-header').forEach(el => el.style.color = s_text);
@@ -1216,7 +931,6 @@
             axisMarkers.forEach(series => series.applyOptions({ lineWidth: s_ray_width }));
         }
 
-        // --- 3. MULTIPLE WATCHLISTS ---
         function updateListDropdown() {
             const sel = document.getElementById('list-selector');
             sel.innerHTML = '';
@@ -1228,6 +942,7 @@
                 sel.appendChild(opt);
             });
         }
+
         function switchList() {
             activeListName = document.getElementById('list-selector').value;
             localStorage.setItem('tv-active-list', activeListName);
@@ -1236,6 +951,7 @@
             renderWl();
             fetchWlData();
         }
+
         function createNewList() {
             const name = prompt("Enter new watchlist name:");
             if(name && name.trim() !== "" && !watchlistsData[name]) {
@@ -1243,11 +959,10 @@
                 localStorage.setItem('tv-active-list', activeListName); saveWatchlists(); updateListDropdown(); updateDatalist(); renderWl();
             }
         }
+
         function deleteCurrentList() {
             if(Object.keys(watchlistsData).length <= 1) return alert("Cannot delete your only watchlist.");
             if(confirm(`Delete watchlist '${activeListName}'?`)) {
-                
-                // If deleting a colored list permanently, strip those colors from the main list first
                 const colorLists = ['🔴 Red List', '🟠 Orange List', '🔵 Blue List', '🟢 Green List'];
                 if (colorLists.includes(activeListName)) {
                     const stocksToReset = watchlist.map(w => w.symbol);
@@ -1271,10 +986,9 @@
                 fetchWlData();
             }
         }
+
         function saveWatchlists() { 
             localStorage.setItem('tv-watchlists-v1', JSON.stringify(watchlistsData)); 
-            
-            // Auto-update stock counts in the dropdown without losing focus
             const sel = document.getElementById('list-selector');
             if (sel) {
                 Array.from(sel.options).forEach(opt => {
@@ -1285,16 +999,13 @@
                 });
             }
         }
+
         function copySymbols(e) {
-            // Only grab the visible rows currently rendered after filtering
             const items = Array.from(document.querySelectorAll('.wl-item'));
             if (items.length === 0) return alert("No visible stocks to copy.");
-            
-            // Creates a comma-separated list of the filtered stocks in their current sorted order
             const symbols = items.map(el => el.dataset.sym).filter(Boolean).join(',');
             
             navigator.clipboard.writeText(symbols).then(() => {
-                // Flash the button green for immediate visual feedback
                 const btn = e.target;
                 const originalText = btn.innerText;
                 btn.innerText = "✅ Copied!";
@@ -1310,13 +1021,11 @@
             const visibleSymbols = items.map(el => el.dataset.sym).filter(Boolean);
             const listToExport = watchlist.filter(w => visibleSymbols.includes(w.symbol));
             
-            // Generate clean CSV payload
             let csvContent = "data:text/csv;charset=utf-8,SYMBOL,CMP,%CHG,SIGNAL\n";
             listToExport.forEach(w => {
                 csvContent += `${w.symbol},${w.cmp || 0},${w.chg || 0},${w.signal || '-'}\n`;
             });
             
-            // Trigger browser download
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -1345,7 +1054,6 @@
             if (syms.length === 0) return;
 
             if (isLocal) {
-                // --- PC LIVE POST CHUNKING ---
                 const chunkSize = 20;
                 const fetchPromises = [];
                 for (let i = 0; i < syms.length; i += chunkSize) {
@@ -1370,7 +1078,6 @@
                 }
                 await Promise.all(fetchPromises);
             } else {
-                // --- CLOUD STATIC JSON ---
                 try {
                     const res = await fetch('api/watchlist_summary.json?v=' + cacheVersion);
                     const apiData = await res.json();
@@ -1398,7 +1105,6 @@
                 return;
             }
             
-            // --- PC LIVE SYNCING ---
             const syncBtn = document.getElementById('btn-sync');
             syncBtn.disabled = true; syncBtn.style.color = '#ff9800'; 
 
@@ -1437,25 +1143,22 @@
 
         function setSort(mode) {
             if(sortMode === mode) sortAsc = !sortAsc; else { sortMode = mode; sortAsc = true; }
-            // Save the new preference to memory
             localStorage.setItem('tv-sort-mode', sortMode);
             localStorage.setItem('tv-sort-asc', sortAsc);
             renderWl();
         }
-                // --- DRAG & DROP AND MOVE LOGIC ---
+
         let draggedSym = null;
 
         function handleDragStart(e) {
             draggedSym = this.dataset.sym;
             e.dataTransfer.effectAllowed = 'move';
             
-            // Lock the current visual order as the new permanent array order
             watchlist = Array.from(document.querySelectorAll('.wl-item')).map(el => 
                 watchlist.find(w => w.symbol === el.dataset.sym)
             );
             watchlistsData[activeListName] = watchlist;
             
-            // Switch to manual mode so the list doesn't immediately auto-resort
             sortMode = 'manual';
             localStorage.setItem('tv-sort-mode', sortMode);
         }
@@ -1494,14 +1197,12 @@
             return false;
         }
 
-        // --- RIGHT-CLICK CONTEXT MENU LOGIC ---
         let ctxTargetSym = null;
 
-                function showContextMenu(e, sym) {
+        function showContextMenu(e, sym) {
             e.preventDefault(); 
             ctxTargetSym = sym;
             
-            // Instantly reveal the 'X' on all stocks
             document.getElementById('wl-list').classList.add('edit-mode');
             
             let ctxMenu = document.getElementById('wl-context-menu');
@@ -1513,7 +1214,6 @@
                 document.addEventListener('click', (event) => {
                     if (event.target.closest('#wl-context-menu') === null) {
                         ctxMenu.style.display = 'none';
-                        // Auto-hide the 'X' buttons if clicking outside the menu/watchlist
                         if (event.target.closest('#watchlist') === null) {
                             document.getElementById('wl-list').classList.remove('edit-mode');
                         }
@@ -1523,7 +1223,6 @@
             
             ctxMenu.innerHTML = `<div class="ctx-header">${sym} Actions</div>`;
 
-            // Inject the specific "Remove" button into the menu
             const delBtn = document.createElement('div');
             delBtn.className = 'ctx-item';
             delBtn.style.color = '#f23645';
@@ -1560,55 +1259,40 @@
             ctxMenu.style.top = `${yPos}px`;
         }
 
-
         function executeMove(targetList) {
-        if (!ctxTargetSym) return;
-        const ctxMenu = document.getElementById('wl-context-menu');
-        
-        // Check if the stock isn't already in the target list
-        if (!watchlistsData[targetList].find(w => w.symbol === ctxTargetSym)) {
-            const item = watchlist.find(w => w.symbol === ctxTargetSym);
-            if(item) {
-                // Instantly copy the exact item state to the new list
-                watchlistsData[targetList].push({ 
-                    symbol: item.symbol, 
-                    color: item.color, 
-                    chg: item.chg, 
-                    cmp: item.cmp, 
-                    signal: item.signal 
-                });
-                saveWatchlists();
-                
-                // Trigger visual flash confirmation
-                const row = document.querySelector(`.wl-item[data-sym="${ctxTargetSym}"]`);
-                if (row) {
-                    row.classList.add('flash-success');
-                    setTimeout(() => row.classList.remove('flash-success'), 500);
+            if (!ctxTargetSym) return;
+            const ctxMenu = document.getElementById('wl-context-menu');
+            
+            if (!watchlistsData[targetList].find(w => w.symbol === ctxTargetSym)) {
+                const item = watchlist.find(w => w.symbol === ctxTargetSym);
+                if(item) {
+                    watchlistsData[targetList].push({ 
+                        symbol: item.symbol, 
+                        color: item.color, 
+                        chg: item.chg, 
+                        cmp: item.cmp, 
+                        signal: item.signal 
+                    });
+                    saveWatchlists();
+                    
+                    const row = document.querySelector(`.wl-item[data-sym="${ctxTargetSym}"]`);
+                    if (row) {
+                        row.classList.add('flash-success');
+                        setTimeout(() => row.classList.remove('flash-success'), 500);
+                    }
                 }
             }
+            if (ctxMenu) ctxMenu.style.display = 'none';
         }
-        
-        // Silently close the menu
-        if (ctxMenu) ctxMenu.style.display = 'none';
-    }
 
-        // Hide context menu when clicking anywhere else
-        document.addEventListener('click', (e) => {
-            const ctxMenu = document.getElementById('wl-context-menu');
-            if (ctxMenu && e.target.closest('#wl-context-menu') === null) {
-                ctxMenu.style.display = 'none';
-            }
-        });
-            function renderWl() {
+        function renderWl() {
             const cont = document.getElementById('wl-list');
-            const scrollPos = cont.scrollTop; // <-- ADDED: Memorize scroll depth
+            const scrollPos = cont.scrollTop; 
             cont.innerHTML = '';
             let displayList = [...watchlist];
             
-            // Assign numerical weights strictly for the color sort
             const colorWeights = { 'none': 0, 'red': 1, 'orange': 2, 'blue': 3, 'green': 4 };
 
-            // --- ADVANCED SCREENER INTERCEPT ---
             displayList = displayList.filter(item => {
                 if (activeFilters.minP !== '' && (item.cmp || 0) < parseFloat(activeFilters.minP)) return false;
                 if (activeFilters.maxP !== '' && (item.cmp || 0) > parseFloat(activeFilters.maxP)) return false;
@@ -1617,7 +1301,6 @@
                 if (activeFilters.minRvol !== '' && (item.rvol || 0) < parseFloat(activeFilters.minRvol)) return false;
                 if (activeFilters.minUd !== '' && (item.ud || 0) < parseFloat(activeFilters.minUd)) return false;
                 
-                // Multi-Select Signal Filter Check
                 const hasSignalFilter = activeFilters.sigBull || activeFilters.sigWait || activeFilters.sigTrap;
                 
                 if (hasSignalFilter) {
@@ -1637,50 +1320,42 @@
 
             const isMtfActive = activeIndicators.includes('mtf_core');
 
-        displayList.forEach(item => {
-            item.badgeTxt = '-'; item.badgeCol = 'transparent'; item.sortVal = 0;
-            if(isMtfActive && item.signal) {
-                // Check for Macro Breakout first
-                    if(item.signal.includes('MACRO')) { 
-                        item.badgeTxt = 'W'; item.badgeCol = '#00bcd4'; item.sortVal = 7; // Cyan 'W' (Highest Priority)
+            displayList.forEach(item => {
+                item.badgeTxt = '-'; item.badgeCol = 'transparent'; item.sortVal = 0;
+                if(isMtfActive && item.signal) {
+                        if(item.signal.includes('MACRO')) { 
+                            item.badgeTxt = 'W'; item.badgeCol = '#00bcd4'; item.sortVal = 7; 
+                        }
+                        else if(item.signal.includes('BUY') || item.signal.includes('EMA') || item.signal.includes('HOLD')) { 
+                            item.badgeTxt = 'B'; item.badgeCol = '#089981'; item.sortVal = 5; 
+                        }
+                        else if(item.signal.includes('ADD')) { 
+                            item.badgeTxt = 'A'; item.badgeCol = '#2962FF'; item.sortVal = 4; 
+                        }
+                        else if(item.signal.includes('PRIME')) { 
+                            item.badgeTxt = 'P'; item.badgeCol = '#FFB300'; item.sortVal = 6; 
+                        }
+                        else if(item.signal.includes('WAIT') || item.signal.includes('BROKEN') || item.signal.includes('STOPPED')) { 
+                            item.badgeTxt = 'W'; item.badgeCol = '#ff9800'; item.sortVal = 3; 
+                        }
+                        else if(item.signal.includes('HIGH') || item.signal.includes('EXTENDED') || item.signal.includes('EXHAUSTED')) { 
+                            item.badgeTxt = 'T'; item.badgeCol = '#9C27B0'; item.sortVal = 2; 
+                        }
+                        else if(item.signal.includes('FAIL')) { 
+                            item.badgeTxt = 'F'; item.badgeCol = '#f23645'; item.sortVal = 1; 
+                        }
                     }
-                    else if(item.signal.includes('BUY') || item.signal.includes('EMA') || item.signal.includes('HOLD')) { 
-                        item.badgeTxt = 'B'; item.badgeCol = '#089981'; item.sortVal = 5; 
-                    }
-                    else if(item.signal.includes('ADD')) { 
-                        item.badgeTxt = 'A'; item.badgeCol = '#2962FF'; item.sortVal = 4; // Blue for Add-ons
-                    }
-                    else if(item.signal.includes('PRIME')) { 
-                        item.badgeTxt = 'P'; item.badgeCol = '#FFB300'; item.sortVal = 6; // Vibrant Gold 
-                    }
-                    else if(item.signal.includes('WAIT') || item.signal.includes('BROKEN') || item.signal.includes('STOPPED')) { 
-                        item.badgeTxt = 'W'; item.badgeCol = '#ff9800'; item.sortVal = 3; 
-                    }
-                    else if(item.signal.includes('HIGH') || item.signal.includes('EXTENDED') || item.signal.includes('EXHAUSTED')) { 
-                        item.badgeTxt = 'T'; item.badgeCol = '#9C27B0'; item.sortVal = 2; // Purple for Traps
-                    }
-                    else if(item.signal.includes('FAIL')) { 
-                        item.badgeTxt = 'F'; item.badgeCol = '#f23645'; item.sortVal = 1; 
-                    }
-                }
-            });
+                });
 
-            // Independent Sorting Rules
             if (sortMode === 'sym') displayList.sort((a,b) => sortAsc ? a.symbol.localeCompare(b.symbol) : b.symbol.localeCompare(a.symbol));
             if (sortMode === 'cmp') displayList.sort((a,b) => sortAsc ? (b.cmp||0) - (a.cmp||0) : (a.cmp||0) - (b.cmp||0));
             if (sortMode === 'chg') displayList.sort((a,b) => sortAsc ? (b.chg||0) - (a.chg||0) : (a.chg||0) - (b.chg||0));
-            
-            // "Tag ↕" Column (Signals Only)
             if (sortMode === 'status') displayList.sort((a,b) => sortAsc ? b.sortVal - a.sortVal : a.sortVal - b.sortVal);
-            
-            // "◯" Column (Colors Only)
             if (sortMode === 'color') displayList.sort((a,b) => sortAsc ? colorWeights[b.color || 'none'] - colorWeights[a.color || 'none'] : colorWeights[a.color || 'none'] - colorWeights[b.color || 'none']);
-            // Analytical Columns
             if (sortMode === 'bp') displayList.sort((a,b) => sortAsc ? (b.bp||0) - (a.bp||0) : (a.bp||0) - (b.bp||0));
             if (sortMode === 'rvol') displayList.sort((a,b) => sortAsc ? (b.rvol||0) - (a.rvol||0) : (a.rvol||0) - (b.rvol||0));
             if (sortMode === 'ud') displayList.sort((a,b) => sortAsc ? (b.ud||0) - (a.ud||0) : (a.ud||0) - (b.ud||0));
 
-            // Inject the dynamic header row directly into the scrolling container
             cont.innerHTML = `
                 <div class="wl-cols">
                     <div class="col-color" onclick="setSort('color')" title="Sort by Color">◯</div>
@@ -1707,7 +1382,6 @@
                 const displayRvol = isMtfActive && item.rvol !== undefined && item.rvol !== null ? item.rvol.toFixed(2) : '-';
                 const displayUd = isMtfActive && item.ud !== undefined && item.ud !== null ? item.ud.toFixed(2) : '-';
                 
-                // Escape quotes so they don't break the inline HTML onclick attributes
                 const safeSym = item.symbol.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 
                 div.innerHTML = `
@@ -1722,7 +1396,6 @@
                     <div class="del-btn" onclick="removeWl(event, '${safeSym}')" title="Remove Stock">✕</div>
                 `;
                 
-                // Bind events
                 div.addEventListener('dragstart', handleDragStart);
                 div.addEventListener('dragover', handleDragOver);
                 div.addEventListener('dragenter', handleDragEnter);
@@ -1747,10 +1420,9 @@
             }
 
             saveWatchlists();
-            cont.scrollTop = scrollPos; // <-- ADDED: Instantly restore scroll depth
+            cont.scrollTop = scrollPos; 
         }
 
-        // --- GLOBAL SEARCH AUTOCOMPLETE ---
         function updateDatalist() {
             const dl = document.getElementById('watchlist-stocks');
             dl.innerHTML = '';
@@ -1761,7 +1433,6 @@
             });
         }
         
-        // --- CENTRAL SYMBOL CLEANER (Filters Chartink dates, hashtags, etc) ---
         function parseSymbols(rawText) {
             const invalidTokens = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'SEPT', 'OCT', 'NOV', 'DEC', 'SYMBOL', 'STOCK', 'NAME', 'CLOSE', 'VOLUME'];
             
@@ -1769,24 +1440,21 @@
                 .map(s => s.replace(/^(NSE|BSE):/i, '').replace(/['"’‘#]/g, '').trim().toUpperCase())
                 .filter(s => {
                     if (!s) return false;
-                    if (!isNaN(s)) return false; // Drops pure numbers like 22, 2026, or prices
-                    if (invalidTokens.includes(s)) return false; // Drops month names & headers
+                    if (!isNaN(s)) return false; 
+                    if (invalidTokens.includes(s)) return false; 
                     return true;
                 });
         }
 
-        // --- STRIPS "NSE:", "BSE:", & INSTANT SEARCH ---
         function checkSearchInput(e) {
             let val = e.target.value.toUpperCase().trim();
             val = val.replace(/^(NSE|BSE):/i, '').replace(/['"’‘#]/g, '').trim(); 
             
-            // Instantly trigger if the clicked/typed text matches a downloaded stock
             if (localAvailableStocks.includes(val)) {
                 searchAndAdd(val); 
             }
         }
 
-        // --- FIX 6: Viewport & Keyboard Resets (Global Scope) ---
         const searchEl = document.getElementById('top-search');
         if (searchEl) {
             searchEl.addEventListener('blur', () => {
@@ -1799,7 +1467,6 @@
             });
         }
 
-        // Watch Samsung Internet / Chrome dynamic viewport resets
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', () => {
                 window.scrollTo(0, 0);
@@ -1854,7 +1521,6 @@
         function removeWl(e, sym) { 
             e.stopPropagation(); 
             
-            // If deleting from a colored list, globally reset this stock's color to 'none'
             const colorLists = ['🔴 Red List', '🟠 Orange List', '🔵 Blue List', '🟢 Green List'];
             if (colorLists.includes(activeListName)) {
                 Object.keys(watchlistsData).forEach(listName => {
@@ -1875,7 +1541,6 @@
         }
         
         function clearWl() { 
-            // If clearing a colored list entirely, globally reset ALL colors for these stocks
             const colorLists = ['🔴 Red List', '🟠 Orange List', '🔵 Blue List', '🟢 Green List'];
             if (colorLists.includes(activeListName)) {
                 const stocksToReset = watchlist.map(w => w.symbol);
@@ -1897,7 +1562,7 @@
             clearChartData("Select a Stock From List"); 
         }
         
-                        function cycleColor(e, sym) {
+        function cycleColor(e, sym) {
             e.stopPropagation();
             const colors = ['none', 'red', 'orange', 'blue', 'green'];
             
@@ -1971,14 +1636,12 @@
                 return;
             }
             
-            // Check if we have the secret token for this stock
             const token = zerodhaTokens[currentSymbol];
             if (!token) {
                 alert(`Could not find Zerodha token for ${currentSymbol}. Try refreshing the page.`);
                 return;
             }
 
-            // Open the exact TradingView chart format you discovered
             const url = `https://kite.zerodha.com/markets/ext/chart/web/tvc/NSE/${currentSymbol}/${token}`;
             window.open(url, '_blank');
         }
@@ -1988,7 +1651,6 @@
                 alert("Please select a stock first.");
                 return;
             }
-            // Opens Screener.in consolidated view for the active symbol
             const url = `https://www.screener.in/company/${currentSymbol}/consolidated/`;
             window.open(url, '_blank');
         }
@@ -1998,16 +1660,14 @@
                 alert("Please select a stock first.");
                 return;
             }
-            // Opens the default TradingView advanced chart for the active symbol
             const url = `https://in.tradingview.com/chart/?symbol=NSE:${currentSymbol}`;
             window.open(url, '_blank');
         }
 
         window.addEventListener('keydown', (e) => {
-            // 1. Universal Shortcuts (Work even if typing in an input)
             if (e.key === 'Escape') {
                 closeSettings();
-                setTool(null); // Return to crosshair mode
+                setTool(null); 
                 if (isReplaySelecting || isReplayActive) exitReplayMode();
                 return;
             }
@@ -2018,29 +1678,24 @@
                 return;
             }
 
-            // Spacebar: Single-press Play / Pause auto-play
             if (isReplayActive && (e.code === 'Space' || e.key === ' ')) {
                 e.preventDefault();
                 togglePlayPause();
                 return;
             }
 
-            // --- Replay Mode Forward Engine (Manual Step) ---
             if (isReplayActive && e.shiftKey && e.key === 'ArrowRight') {
                 e.preventDefault();
-                if (e.repeat) return; // INSTANTLY blocks OS key-hold flooding
+                if (e.repeat) return; 
                 stepReplayForward();
                 return;
             }
 
-            // Prevent executing the shortcuts below if the user is typing in the Search/Watchlist input
             if (document.activeElement.tagName === 'INPUT') return;
 
-            // 2. Watchlist Navigation
             if (e.key === 'ArrowUp') { e.preventDefault(); cycleStock(-1); }
             if (e.key === 'ArrowDown') { e.preventDefault(); cycleStock(1); }
             
-            // 3. Drawing Tools (Alt + Key matches TradingView)
             if (e.altKey && e.key.toLowerCase() === 'h') { e.preventDefault(); setTool('hline'); }
             if (e.altKey && e.key.toLowerCase() === 'j') { e.preventDefault(); setTool('hray'); }
             if (e.altKey && e.key.toLowerCase() === 't') { e.preventDefault(); setTool('trendline'); }
@@ -2049,15 +1704,14 @@
             if (e.altKey && e.key.toLowerCase() === 'e') { e.preventDefault(); setTool('eraser'); }
             if (e.altKey && e.key.toLowerCase() === 'm') { e.preventDefault(); toggleMagnet(); }
             
-            // 4. UI & View Toggles
             if (e.altKey && e.key.toLowerCase() === 'w') { e.preventDefault(); toggleWl(); }
-            if (e.altKey && e.key.toLowerCase() === 'r') { e.preventDefault(); triggerNativeAuto(); } // Reset Chart View
-            if (e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); toggleLog(); } // Toggle Log Scale
-            // --- External Links ---
+            if (e.altKey && e.key.toLowerCase() === 'r') { e.preventDefault(); triggerNativeAuto(); } 
+            if (e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); toggleLog(); } 
+            
             if (e.altKey && e.key.toLowerCase() === 'z') { e.preventDefault(); openZerodha(); }
             if (e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); openScreener(); }
             if (e.altKey && e.key.toLowerCase() === 'v') { e.preventDefault(); openTradingView(); }
-            // 5. Timeframe Switching (1 to 5)
+            
             if (e.key === '0') { e.preventDefault(); setTimeframe('D'); }
             if (e.key === '1') { e.preventDefault(); setTimeframe('15m'); }
             if (e.key === '2') { e.preventDefault(); setTimeframe('75m'); }
@@ -2065,30 +1719,25 @@
             if (e.key === '5') { e.preventDefault(); setTimeframe('M'); }
         });
 
-        // --- 4. CHART ENGINE ---
         const formatCustomDate = (time) => {
             let d;
             
-            // If the chart detects a Daily/Weekly timeframe, it passes an object.
             if (typeof time === 'object' && time.year !== undefined) {
-                // JS Dates are 0-indexed for months, so we subtract 1
                 d = new Date(time.year, time.month - 1, time.day);
             } else {
-                // If it's an Intraday timeframe, it passes a raw Unix timestamp
                 d = new Date(time * 1000);
             }
             
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
             
-            // Output time on the crosshair if viewing an intraday chart (12-hour format)
             if (currentTimeframe === '15m' || currentTimeframe === '75m') {
                 let hours = d.getHours();
                 const minutes = d.getMinutes().toString().padStart(2, '0');
                 const ampm = hours >= 12 ? 'PM' : 'AM';
                 
                 hours = hours % 12;
-                hours = hours ? hours : 12; // the hour '0' should be '12'
+                hours = hours ? hours : 12; 
                 const strHours = hours.toString().padStart(2, '0'); 
                 
                 return `${d.getDate()} ${months[d.getMonth()]} ${strHours}:${minutes} ${ampm}`;
@@ -2110,7 +1759,6 @@
             timeScale: { borderColor: '#2a2e39', timeVisible: true, rightOffset: 5 }
         });
         
-        // --- DYNAMIC PANE FACTORY (PHASE 3 & 5) ---
         const topChartContainer = document.getElementById('tv-chart');
         const panesContainer = document.getElementById('panes-container');
         
@@ -2118,7 +1766,6 @@
         let isPaneResizing = false;
         let isTimeSyncing = false;
         let isSwappingStock = false; 
-        // Load the permanently saved dragged height from memory, or default to null
         window.customBottomPct = localStorage.getItem('tv-pane-pct') ? parseFloat(localStorage.getItem('tv-pane-pct')) : null;
 
         let customZoomSpan = null; 
@@ -2156,15 +1803,14 @@
             } else {
                 p.container.style.flex = '1 1 0';
             }
-            window.customBottomPct = null; // Unlocks auto-resizing
-            localStorage.removeItem('tv-pane-pct'); // Forget saved height so it restores to defaults
+            window.customBottomPct = null; 
+            localStorage.removeItem('tv-pane-pct'); 
             updateTimeScaleVisibility();
         }
 
         function createPane(id, titleHtml) {
             if (dynamicPanes[id]) return dynamicPanes[id];
 
-            // FIX: Force the master container open BEFORE injecting the chart so it never crashes from having 0 height
             panesContainer.style.display = 'flex';
             panesContainer.classList.remove('sub-hidden');
 
@@ -2176,7 +1822,7 @@
             resizer.className = 'pane-resizer';
             resizer.title = "Drag to resize overall pane space, double-click to collapse";
             resizer.ondblclick = () => toggleCollapsePane(id);
-                        resizer.onmousedown = (e) => {
+            resizer.onmousedown = (e) => {
                 isPaneResizing = true;
                 document.body.style.cursor = 'row-resize';
             };
@@ -2186,7 +1832,7 @@
 
             const header = document.createElement('div');
             header.className = 'pane-header';
-            header.style.color = s_text; // FIX: Instantly applies your custom Text & Axis color to new panes
+            header.style.color = s_text; 
             header.innerHTML = `
                 <div class="pane-title">
                     <span>${titleHtml}</span>
@@ -2290,7 +1936,6 @@
             });
         });
 
-                // Smart Master Resizer: Drags the entire container space (Mouse + Mobile Touch)
         function handlePaneDrag(clientY) {
             if (!isPaneResizing) return;
             const containerH = document.getElementById('chart-container').clientHeight;
@@ -2356,8 +2001,6 @@
                     panesContainer.style.flex = '0 0 auto';
                     chart.applyOptions({ timeScale: { visible: true } });
                 } else {
-                    // FIX: Use total panes (keys.length) so the master container doesn't shrink.
-                    // When a pane hides, the remaining active panes will now expand into the freed space.
                     const calcBottomPct = window.customBottomPct || Math.min(30 + ((keys.length - 1) * 15), 55);
 
                     topChartContainer.style.flex = `1 1 ${100 - calcBottomPct}%`;
@@ -2478,10 +2121,7 @@
         }
         
         function triggerNativeAuto() { 
-            // Detect if the user is on a phone (portrait or horizontal)
             const isMobile = window.innerWidth <= 800 || (window.innerWidth <= 950 && window.innerHeight < window.innerWidth);
-            
-            // Set to 3 Months (65 bars) for mobile, 6 Months (130 bars) for PC
             currentBarsToView = isMobile ? 65 : 130; 
             customZoomSpan = null; 
             
@@ -2540,7 +2180,7 @@
             crosshairMarkerVisible: false,
             autoscaleInfoProvider: (original) => {
                 const res = original();
-                if (res !== null) res.priceRange.minValue = 0; // Kills inversion
+                if (res !== null) res.priceRange.minValue = 0;
                 return res;
             }
         });
@@ -2700,7 +2340,8 @@
             }
         });
 
-                let activeTool = null, activeDrawings = [], clickState = 0, tempDrawing = null;
+        // --- UNIFIED TRACKPAD DRAWING ENGINE ---
+        let activeTool = null, activeDrawings = [], clickState = 0, tempDrawing = null;
         let isMagnet = localStorage.getItem('tv-magnet-mode') === 'true'; 
         let measureStart = null; 
 
@@ -2710,7 +2351,7 @@
             localStorage.setItem('tv-magnet-mode', isMagnet);
         }
 
-                        let mobileCX = 0, mobileCY = 0;
+        let mobileCX = 0, mobileCY = 0;
         let ptDownX = 0, ptDownY = 0;
         let hasDragged = false;
         let isDrawingDown = false;
@@ -2727,7 +2368,6 @@
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             const mc = document.getElementById('mobile-crosshair');
             if (mc) {
-                // Bypass floating crosshair entirely if using the Eraser tool
                 if (activeTool && activeTool !== 'eraser' && isMobile) {
                     mc.style.display = 'block';
                     const rect = document.getElementById('tv-chart').getBoundingClientRect();
@@ -2743,6 +2383,57 @@
                 document.getElementById('measure-overlay').style.display = 'none';
                 document.getElementById('measure-badge').style.display = 'none';
             }
+        }
+
+        function saveDrawingsToStorage() {
+            let serialized = [];
+            activeDrawings.forEach(d => {
+                if(d.type === 'hline') serialized.push({ type: 'hline', price: d.obj.options().price, groupId: d.groupId });
+                else serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId });
+            });
+            allSavedDrawings[currentSymbol] = serialized;
+            localStorage.setItem('tv-drawings-v1', JSON.stringify(allSavedDrawings));
+        }
+
+        function restoreDrawingsForSymbol() {
+            const saved = allSavedDrawings[currentSymbol];
+            if(!saved) return;
+            saved.forEach(d => {
+                if(d.type === 'hline') {
+                    const pl = candleSeries.createPriceLine({ price: d.price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
+                    activeDrawings.push({ type: 'hline', obj: pl, groupId: d.groupId });
+                } else {
+                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false });
+                    ls.setData(d.data);
+                    activeDrawings.push({ type: d.type, obj: ls, groupId: d.groupId });
+                }
+            });
+        }
+
+        function clearDrawings() {
+            activeDrawings.forEach(d => { if (d.type === 'hline') candleSeries.removePriceLine(d.obj); else chart.removeSeries(d.obj); });
+            activeDrawings = []; setTool(null); saveDrawingsToStorage();
+        }
+        
+        function undoLastDrawing() {
+            if (activeDrawings.length === 0) return;
+            const last = activeDrawings.pop();
+            if (last.type === 'hline') candleSeries.removePriceLine(last.obj); else chart.removeSeries(last.obj);
+            setTool(null); saveDrawingsToStorage();
+        }
+
+        function applyMagnet(time, price) {
+            if (!isMagnet || !time) return { time, price };
+            const c = candleMap.get(time);
+            if (!c) return { time, price };
+            const vals = [c.o, c.h, c.l, c.c];
+            let closestPrice = vals[0];
+            let minDiff = Math.abs(vals[0] - price);
+            for(let i=1; i<4; i++) {
+                const diff = Math.abs(vals[i] - price);
+                if(diff < minDiff) { minDiff = diff; closestPrice = vals[i]; }
+            }
+            return { time, price: closestPrice };
         }
 
         function updateDrawingPreview(x, y) {
@@ -2796,16 +2487,13 @@
 
             if (activeTool && activeTool !== 'eraser' && isMobile) {
                 if (isDrawingDown && hasDragged) {
-                    // PURE RELATIVE TRACKPAD WITH 1.8x SENSITIVITY BOOST
                     const speed = 1.8; 
                     mobileCX += (e.clientX - ptDownX) * speed;
                     mobileCY += (e.clientY - ptDownY) * speed;
                     
-                    // Keep crosshair strictly inside chart bounds
                     mobileCX = Math.max(0, Math.min(mobileCX, rect.width));
                     mobileCY = Math.max(0, Math.min(mobileCY, rect.height));
                     
-                    // Reset origin for the next calculation
                     ptDownX = e.clientX; 
                     ptDownY = e.clientY;
 
@@ -2829,7 +2517,7 @@
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
             const rect = document.getElementById('tv-chart').getBoundingClientRect();
 
-            // FEATURE: Direct Tap-to-Delete when NO tool is selected
+            // Direct Tap-to-Delete when NO tool is selected
             if (!activeTool && !hasDragged && lastChartData.length > 0) {
                 let currX = e.clientX - rect.left; let currY = e.clientY - rect.top;
                 let time = chart.timeScale().coordinateToTime(currX);
@@ -2875,11 +2563,8 @@
             }
 
             if (!activeTool || lastChartData.length === 0) return;
-            
-            // CRITICAL: If the user was dragging to aim, DO NOT drop the anchor.
             if (hasDragged) return; 
 
-            // At this point, it is a clean TAP. Drop the anchor!
             let targetX = (isMobile && activeTool !== 'eraser') ? mobileCX : (e.clientX - rect.left);
             let targetY = (isMobile && activeTool !== 'eraser') ? mobileCY : (e.clientY - rect.top);
 
@@ -2887,7 +2572,6 @@
             let price = candleSeries.coordinateToPrice(targetY);
             if (!time || !price) return;
             
-            // Standard Eraser Tool Logic (Direct Touch)
             if (activeTool === 'eraser') {
                 const threshold = Math.abs(candleSeries.coordinateToPrice(targetY) - candleSeries.coordinateToPrice(targetY + 10)); 
                 let toDeleteIdx = -1;
@@ -2983,20 +2667,16 @@
                 }
             }
         });
-
-
         
         let axisMarkers = []; 
         
         function clearChartData(msg) {
             document.getElementById('title-text').innerText = msg;
-                        document.getElementById('company-name').innerText = "-";
+            document.getElementById('company-name').innerText = "-";
             
-            // Add these two lines
-                        const chartDot = document.getElementById('chart-color-tag');
+            const chartDot = document.getElementById('chart-color-tag');
             if (chartDot) chartDot.className = `color-tag tag-none`;
             if (document.getElementById('chart-sig-badge')) document.getElementById('chart-sig-badge').style.display = 'none';
-
             
             candleSeries.setData([]); ema9.setData([]); ema21.setData([]); ema50.setData([]); ema200.setData([]); atrSeries.setData([]);
             candleSeries.setMarkers([]);
@@ -3019,7 +2699,6 @@
             document.title = "Hafs Terminal"; 
             clearDrawings();
             
-            // Nuke dynamic panes entirely to prevent infinite-loop sync crashes
             Object.keys(dynamicPanes).forEach(id => {
                 dynamicPanes[id].chart.remove();
             });
@@ -3031,7 +2710,7 @@
         function renderChartState(dataToRender) {
             if (!dataToRender || dataToRender.length === 0) return;
             
-            isSwappingStock = true; // Lock timescale sync
+            isSwappingStock = true; 
             
             const isMtfActive = activeIndicators.includes('mtf_core');
             const candles = [], e9 = [], e21 = [], e50 = [], e200 = [], markers = [], atrData = [];
@@ -3093,7 +2772,6 @@
                 macdData.push({ time, value: d.macd });
                 macdSigData.push({ time, value: d.macd_sig });
                 let histColor = '#26a69a';
-                // Uses 35% opacity for strong moves, and 10% opacity for weak moves
                 if (d.macd_hist >= 0) histColor = d.macd_hist > prevMacdHist ? 'rgba(38, 166, 154, 0.60)' : 'rgba(38, 166, 154, 0.25)';
                 else histColor = d.macd_hist < prevMacdHist ? 'rgba(242, 54, 69, 0.60)' : 'rgba(242, 54, 69, 0.25)';
                 macdHistData.push({ time, value: d.macd_hist, color: histColor });
@@ -3239,9 +2917,9 @@
                 
                 if (!pane.series.vol) {
                     pane.series.vol = pane.chart.addHistogramSeries({ 
-                        base: 0, // Forces volume bars to perfectly anchor to the bottom 0 line
+                        base: 0, 
                         priceFormat: { type: 'volume' }, 
-                        priceScaleId: '', // Independent invisible scale for Volume
+                        priceScaleId: '', 
                         priceLineVisible: false,
                         lastValueVisible: false,
                         crosshairMarkerVisible: false,
@@ -3255,10 +2933,7 @@
                         }
                     });
                     
-                    // Allow volume to grow up to 90% of the pane so it clearly crosses the RSI 70 line
-                    pane.chart.priceScale('').applyOptions({
-                        scaleMargins: { top: 0.1, bottom: 0 }
-                    });
+                    pane.chart.priceScale('').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
                 }
                 
                 if (!pane.series.rsi) {
@@ -3266,19 +2941,15 @@
                         color: 'rgba(171, 71, 188, 0.8)', 
                         lineWidth: 1,
                         priceLineVisible: false,
-                        priceScaleId: 'right', // RSI stays on the visible right axis
-                        autoscaleInfoProvider: () => ({
-                            priceRange: { minValue: 0, maxValue: 100 } // Hard-lock RSI strictly from 0 to 100
-                        })
+                        priceScaleId: 'right',
+                        autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
                     });
                     pane.series.rsi.createPriceLine({ price: 70, color: 'rgba(128, 0, 128, 0.5)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
                     pane.series.rsi.createPriceLine({ price: 30, color: 'rgba(128, 0, 128, 0.5)', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
                     pane.syncSeries = pane.series.rsi; 
                 }
                 
-                // Remove scale margins since the 0-100 lock handles the boundaries perfectly
                 pane.chart.priceScale('right').applyOptions({ autoScale: true });
-                
                 pane.series.vol.setData(volData); 
                 pane.series.vol.setMarkers(volMarkers); 
                 pane.series.rsi.setData(rsiData);
@@ -3296,7 +2967,7 @@
                 mainVolMaSeries.setData(volMaData);
             } else {
                 mainVolMaSeries.applyOptions({ visible: false });
-                mainVolMaSeries.setData([]); // Prevent timestamp overlap crash
+                mainVolMaSeries.setData([]); 
             }
 
             if (activeIndicators.includes('rsi')) {
@@ -3315,8 +2986,6 @@
 
             if (activeIndicators.includes('macd')) {
                 const sigColor = indCfg.macd_sig_col || '#ff9800'; 
-                
-                // Compact UI: Removes the bulky (12, 26, 9) and shortens the labels
                 const macdTitle = `MACD: <span id="leg-macd" style="color: ${indCfg.macd_col};">-</span> &nbsp;S: <span id="leg-macdsig" style="color: ${sigColor};">-</span> &nbsp;H: <span id="leg-macdhist">-</span>`;
 
                 const pane = createPane('macd', macdTitle);
@@ -3325,14 +2994,7 @@
                     pane.series.macd = pane.chart.addLineSeries({ color: indCfg.macd_col, lineWidth: indCfg.line_width, priceLineVisible: false });
                     pane.series.sig = pane.chart.addLineSeries({ color: sigColor, lineWidth: 1, priceLineVisible: false });
                     
-                    pane.series.macd.createPriceLine({ 
-                        price: 0, 
-                        color: '#787b86', 
-                        lineWidth: 1, 
-                        lineStyle: 0, 
-                        axisLabelVisible: false 
-                    });
-                    
+                    pane.series.macd.createPriceLine({ price: 0, color: '#787b86', lineWidth: 1, lineStyle: 0, axisLabelVisible: false });
                     pane.syncSeries = pane.series.macd;
                 } else {
                     pane.series.macd.applyOptions({ color: indCfg.macd_col, lineWidth: indCfg.line_width });
@@ -3348,17 +3010,12 @@
                 const pane = createPane('vol_custom_pane', 'Custom Vol: <span id="leg-sub-vol-pane">-</span>');
                 if (!pane.series.vol) {
                     pane.series.vol = pane.chart.addHistogramSeries({ 
-                        base: 0, 
-                        priceFormat: { type: 'volume' }, 
-                        priceScaleId: 'right', 
-                        priceLineVisible: false, 
-                        lastValueVisible: true, 
-                        crosshairMarkerVisible: true,
+                        base: 0, priceFormat: { type: 'volume' }, priceScaleId: 'right', priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: true,
                         autoscaleInfoProvider: (original) => {
                             const res = original();
                             if (res !== null) {
-                                res.priceRange.minValue = 0; // Kills inversion
-                                if (res.priceRange.maxValue <= 0) res.priceRange.maxValue = 10; // Prevents 0 to 0 inversion crash
+                                res.priceRange.minValue = 0; 
+                                if (res.priceRange.maxValue <= 0) res.priceRange.maxValue = 10; 
                             }
                             return res;
                         }
@@ -3378,7 +3035,7 @@
             }
             
             updateTimeScaleVisibility();
-                        // --- POPULATE CHART SIGNAL BADGE & COLOR ---
+            
             let sigText = '-'; let sigCol = 'transparent';
             if (isMtfActive && lastRow.dash_signal) {
                 let sig = lastRow.dash_signal;
@@ -3403,15 +3060,14 @@
             setTimeout(() => { isSwappingStock = false; }, 50);
         }
 
-                async function loadSymbol(symbol) {
-            document.getElementById('wl-list').classList.remove('edit-mode'); // Auto-hides 'X' buttons
+        async function loadSymbol(symbol) {
+            document.getElementById('wl-list').classList.remove('edit-mode'); 
             currentSymbol = symbol;
             
             if (window.innerWidth <= 800 && sidebar.style.width !== '0px') toggleWl(); 
             renderWl();
             localStorage.setItem('tv-last-symbol', symbol);
             
-            // UI Optimization: Leave previous chart visible while fetching for seamless transition
             document.getElementById('title-text').innerText = `⏳ ${symbol}`;
             
             if (isReplayActive || isReplaySelecting) exitReplayMode();
@@ -3432,13 +3088,11 @@
                 const data = await response.json();
                 if (!data || data.length === 0) throw new Error("Empty Data");
                 
-                                document.getElementById('company-name').innerText = data[0].full_name ? data[0].full_name : symbol;
+                document.getElementById('company-name').innerText = data[0].full_name ? data[0].full_name : symbol;
                 
-                // Add these three lines to instantly fetch and apply the saved color
                 const activeColor = getSavedColor(symbol);
                 const chartDot = document.getElementById('chart-color-tag');
                 if (chartDot) chartDot.className = `color-tag tag-${activeColor}`;
-
                 
                 lastChartData = data; 
                 renderChartState(lastChartData);
@@ -3448,7 +3102,6 @@
                 activeDrawings = []; setTool(null);
                 restoreDrawingsForSymbol();
                 
-                // FIX: Allow flexbox layout and chart resizing to settle before setting logical ranges
                 setTimeout(() => {
                     resizeAllCharts();
                     applyChartView();
