@@ -352,7 +352,7 @@
         <div id="top-bar">
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div class="nav-grp">
-                    <input type="text" id="top-search" list="watchlist-stocks" placeholder="Search Watchlist..." oninput="checkSearchInput(event)" onkeypress="if(event.key==='Enter') searchAndAdd()">
+                    <input type="text" id="top-search" list="watchlist-stocks" placeholder="Search Watchlist..." onchange="searchAndAdd()" onkeypress="if(event.key==='Enter') searchAndAdd()">
                 </div>
                 
                 <div class="nav-grp">
@@ -390,7 +390,9 @@
         
         <div id="chart-container">
             <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
-                <div id="chart-color-tag" class="color-tag tag-none" onclick="if(currentSymbol) cycleColor(event, currentSymbol)" style="width: 14px; height: 14px; transition: transform 0.1s; cursor: pointer;" title="Tap to cycle color"></div>
+                <div onclick="if(currentSymbol) cycleColor(event, currentSymbol)" style="padding: 15px; margin: -15px -4px -15px -15px; cursor: pointer; display: flex; align-items: center;" title="Tap to cycle color">
+                    <div id="chart-color-tag" class="color-tag tag-none" style="width: 14px; height: 14px; transition: transform 0.1s;"></div>
+                </div>
                 <div id="chart-sig-badge" class="sig-badge" style="display: none; width: 16px; height: 16px; font-size: 11px; cursor: default;">-</div>
                 <div id="company-name" style="position: relative; top: 0; left: 0;">-</div>
                 <button id="btn-toggle-emas" class="emas-on" onclick="toggleEmas()" title="Show/Hide EMAs">👁️</button>
@@ -1658,7 +1660,13 @@
                 alert("Please select a stock first.");
                 return;
             }
-            const url = `https://in.tradingview.com/chart/?symbol=NSE:${currentSymbol}`;
+            
+            // Automatically switch to BSE on TradingView if the symbol has the .BO tag
+            let tvSym = `NSE:${currentSymbol}`;
+            if (currentSymbol.endsWith('.BO')) tvSym = `BSE:${currentSymbol.replace('.BO', '')}`;
+            else if (currentSymbol.endsWith('.NS')) tvSym = `NSE:${currentSymbol.replace('.NS', '')}`;
+            
+            const url = `https://in.tradingview.com/chart/?symbol=${tvSym}`;
             window.open(url, '_blank');
         }
 
@@ -2387,6 +2395,7 @@
             let serialized = [];
             activeDrawings.forEach(d => {
                 if(d.type === 'hline') serialized.push({ type: 'hline', price: d.obj.options().price, groupId: d.groupId });
+                else if(d.type === 'fibo') serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId, lvl: d.lvl });
                 else serialized.push({ type: d.type, color: d.obj.options().color, data: d.obj.data(), groupId: d.groupId });
             });
             allSavedDrawings[currentSymbol] = serialized;
@@ -2400,8 +2409,19 @@
                 if(d.type === 'hline') {
                     const pl = candleSeries.createPriceLine({ price: d.price, color: '#131722', lineWidth: 1, lineStyle: 0, axisLabelVisible: true });
                     activeDrawings.push({ type: 'hline', obj: pl, groupId: d.groupId });
+                } else if(d.type === 'fibo') {
+                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: 0, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
+                    ls.setData(d.data);
+                    if (d.data.length > 0) {
+                        ls.setMarkers([{ time: d.data[0].time, position: 'inBar', color: d.color, shape: 'text', text: `${d.lvl !== undefined ? d.lvl : ''} (${d.data[0].value.toFixed(2)})` }]);
+                    }
+                    activeDrawings.push({ type: 'fibo', obj: ls, groupId: d.groupId, lvl: d.lvl });
+                } else if(d.type === 'fibo_base') {
+                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
+                    ls.setData(d.data);
+                    activeDrawings.push({ type: 'fibo_base', obj: ls, groupId: d.groupId });
                 } else {
-                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false });
+                    const ls = chart.addLineSeries({ color: d.color, lineWidth: 1, lineStyle: d.type==='fibo'? 2:0, lastValueVisible: d.type==='hray', priceLineVisible: false, autoscaleInfoProvider: () => null });
                     ls.setData(d.data);
                     activeDrawings.push({ type: d.type, obj: ls, groupId: d.groupId });
                 }
@@ -2467,30 +2487,72 @@
                 let data = time > tempDrawing.t1 ? [{ time: tempDrawing.t1, value: tempDrawing.p1 }, { time: time, value: price }] : [{ time: time, value: price }, { time: tempDrawing.t1, value: tempDrawing.p1 }];
                 tempDrawing.series.setData(data);
             }
+            
+            if (activeTool === 'fibo' && clickState === 1 && tempDrawing) {
+                // Crash Protection: Prevent Math.log10(negative)
+                const safePrice = Math.max(0.0001, price);
+                const safeP1 = Math.max(0.0001, tempDrawing.p1);
+                
+                const logP1 = Math.log10(safeP1);
+                const logPrice = Math.log10(safePrice);
+                const logDiff = logP1 - logPrice;
+                
+                let startT = Math.min(tempDrawing.t1, time);
+                const lastTime = lastChartData.length > 0 ? lastChartData[lastChartData.length-1].time / 1000 : time;
+                let endT = Math.max(time, lastTime + (86400 * 10)); // Stops line near right margin
+                if (startT >= endT) startT = endT - 86400;
+
+                // Anchor Line: Strictly sorted by time to prevent Lightweight Charts crash
+                const baseData = time > tempDrawing.t1 
+                    ? [{ time: tempDrawing.t1, value: safeP1 }, { time: time, value: safePrice }]
+                    : time < tempDrawing.t1 
+                        ? [{ time: time, value: safePrice }, { time: tempDrawing.t1, value: safeP1 }]
+                        : [];
+                if (baseData.length > 0) tempDrawing.baseLine.setData(baseData);
+                
+                tempDrawing.seriesList.forEach(s => {
+                    const logLvl = logPrice + (logDiff * s.lvl); // 0 is Point B, 1 is Point A
+                    const p = Math.pow(10, logLvl);
+                    s.obj.setData([{time: startT, value: p}, {time: endT, value: p}]);
+                    s.obj.setMarkers([{ time: startT, position: 'inBar', color: s.c, shape: 'text', text: `${s.lvl} (${p.toFixed(2)})` }]);
+                });
+            }
         }
 
         document.getElementById('chart-container').addEventListener('pointerdown', (e) => {
             if (isReplaySelecting) return;
             isDrawingDown = true; hasDragged = false;
             ptDownX = e.clientX; ptDownY = e.clientY;
+            
+            // LOCK THE FINGER TO THE CHART: Prevents the mobile browser from dropping the crosshair
             if (activeTool) {
                 try { e.target.setPointerCapture(e.pointerId); } catch(err) {}
             }
         });
 
         document.getElementById('chart-container').addEventListener('pointermove', (e) => {
-            if (!isDrawingDown) return;
             const isMobile = window.innerWidth <= 800 || ('ontouchstart' in window);
+            const rect = document.getElementById('tv-chart').getBoundingClientRect();
+
+            // 1. PC: ALWAYS preview drawings on hover, even if the mouse button is released
+            if (activeTool && !isMobile) {
+                let currX = e.clientX - rect.left; let currY = e.clientY - rect.top;
+                if (currX >= 0 && currX <= rect.width && currY >= 0 && currY <= rect.height) {
+                    updateDrawingPreview(currX, currY);
+                }
+            }
+
+            // 2. Stop executing here if the user isn't actively holding a click/touch
+            if (!isDrawingDown) return;
             
+            // 3. Mobile Trackpad dragging logic
             if (!hasDragged && (Math.abs(e.clientX - ptDownX) > 2 || Math.abs(e.clientY - ptDownY) > 2)) {
                 hasDragged = true;
             }
 
-            const rect = document.getElementById('tv-chart').getBoundingClientRect();
-
             if (activeTool && activeTool !== 'eraser' && isMobile) {
                 if (hasDragged) {
-                    const speed = 2.8; 
+                    const speed = 2.4; 
                     mobileCX += (e.clientX - ptDownX) * speed;
                     mobileCY += (e.clientY - ptDownY) * speed;
                     
@@ -2511,12 +2573,6 @@
                     document.getElementById('mobile-crosshair').style.top = mobileCY + 'px';
                     updateDrawingPreview(mobileCX, mobileCY);
                 }
-                return; 
-            }
-
-            if (activeTool && !isMobile) {
-                let currX = e.clientX - rect.left; let currY = e.clientY - rect.top;
-                if (currX >= 0 && currX <= rect.width && currY >= 0 && currY <= rect.height) updateDrawingPreview(currX, currY);
             }
         });
 
@@ -2542,7 +2598,7 @@
                         } else if (d.type === 'hray') {
                             const data = d.obj.data();
                             if (data.length > 0 && time >= data[0].time && Math.abs(data[0].value - price) < threshold) { toDeleteIdx = i; break; }
-                        } else if (d.type === 'trendline' || d.type === 'fibo') {
+                        } else if (d.type === 'trendline' || d.type === 'fibo' || d.type === 'fibo_base') {
                             const data = d.obj.data();
                             if (data.length === 2) {
                                 const t1 = data[0].time, p1 = data[0].value, t2 = data[1].time, p2 = data[1].value;
@@ -2591,7 +2647,7 @@
                     } else if (d.type === 'hray') {
                         const data = d.obj.data();
                         if (data.length > 0 && time >= data[0].time && Math.abs(data[0].value - price) < threshold) { toDeleteIdx = i; break; }
-                    } else if (d.type === 'trendline' || d.type === 'fibo') {
+                    } else if (d.type === 'trendline' || d.type === 'fibo' || d.type === 'fibo_base') {
                         const data = d.obj.data();
                         if (data.length === 2) {
                             const t1 = data[0].time, p1 = data[0].value, t2 = data[1].time, p2 = data[1].value;
@@ -2647,7 +2703,7 @@
             }
             time = snappedTime; price = snappedPrice;
 
-            const lastTime = lastChartData[lastChartData.length-1].time;
+            const lastTime = lastChartData.length > 0 ? lastChartData[lastChartData.length-1].time / 1000 : time;
             const groupId = Date.now(); 
 
             if (activeTool === 'hline') {
@@ -2664,13 +2720,48 @@
                     activeDrawings.push({ type: 'trendline', obj: ls, groupId: groupId }); clickState = 1;
                 } else { clickState = 0; tempDrawing = null; setTool(null); saveDrawingsToStorage(); }
             } else if (activeTool === 'fibo') {
-                if (clickState === 0) { tempDrawing = { t1: time, p1: price, groupId: groupId }; clickState = 1; } 
-                else {
-                    const t1 = Math.min(tempDrawing.t1, time), diff = tempDrawing.p1 - price;
-                    [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1].forEach((lvl, i) => {
-                        const ls = chart.addLineSeries({ color: ['#787b86', '#f23645', '#ff9800', '#089981', '#089981', '#2962ff', '#787b86'][i], lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
-                        ls.setData([{time: t1, value: tempDrawing.p1 - (diff * lvl)}, {time: lastTime + (86400*365), value: tempDrawing.p1 - (diff * lvl)}]);
-                        activeDrawings.push({ type: 'fibo', obj: ls, groupId: tempDrawing.groupId });
+                if (clickState === 0) { 
+                    const levels = [
+                        {l: 0, c: '#787b86'}, {l: 0.236, c: '#f23645'}, {l: 0.382, c: '#ff9800'}, {l: 0.5, c: '#4caf50'}, 
+                        {l: 0.618, c: '#089981'}, {l: 0.786, c: '#00bcd4'}, {l: 1, c: '#787b86'}, {l: -1.618, c: '#2962ff'}, 
+                        {l: -0.618, c: '#f23645'}, {l: -0.382, c: '#9c27b0'}, {l: -0.25, c: '#e91e63'}
+                    ];
+                    const baseLine = chart.addLineSeries({ color: '#787b86', lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
+                    const seriesList = levels.map(lvl => {
+                        return {
+                            lvl: lvl.l, c: lvl.c,
+                            obj: chart.addLineSeries({ color: lvl.c, lineWidth: 1, lineStyle: 0, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null })
+                        };
+                    });
+                    tempDrawing = { t1: time, p1: price, groupId: groupId, seriesList: seriesList, baseLine: baseLine }; 
+                    clickState = 1; 
+                } else {
+                    const safePrice = Math.max(0.0001, price);
+                    const safeP1 = Math.max(0.0001, tempDrawing.p1);
+                    const logP1 = Math.log10(safeP1);
+                    const logPrice = Math.log10(safePrice);
+                    const logDiff = logP1 - logPrice;
+                    
+                    let startT = Math.min(tempDrawing.t1, time);
+                    let endT = Math.max(time, lastTime + (86400 * 10)); 
+                    if (startT >= endT) startT = endT - 86400;
+
+                    const baseData = time > tempDrawing.t1 
+                        ? [{ time: tempDrawing.t1, value: safeP1 }, { time: time, value: safePrice }]
+                        : time < tempDrawing.t1 
+                            ? [{ time: time, value: safePrice }, { time: tempDrawing.t1, value: safeP1 }]
+                            : [];
+                    if (baseData.length > 0) {
+                        tempDrawing.baseLine.setData(baseData);
+                        activeDrawings.push({ type: 'fibo_base', obj: tempDrawing.baseLine, groupId: tempDrawing.groupId });
+                    }
+                    
+                    tempDrawing.seriesList.forEach(s => {
+                        const logLvl = logPrice + (logDiff * s.lvl);
+                        const p = Math.pow(10, logLvl);
+                        s.obj.setData([{time: startT, value: p}, {time: endT, value: p}]);
+                        s.obj.setMarkers([{ time: startT, position: 'inBar', color: s.c, shape: 'text', text: `${s.lvl} (${p.toFixed(2)})` }]);
+                        activeDrawings.push({ type: 'fibo', obj: s.obj, groupId: tempDrawing.groupId, lvl: s.lvl });
                     });
                     clickState = 0; tempDrawing = null; setTool(null); saveDrawingsToStorage();
                 }
