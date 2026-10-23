@@ -41,9 +41,12 @@ def build_static_api():
         print(f"Crunching {symbol}...")
         try:
             # Download exactly 5 years of daily data
-            new_data = yf.download(f"{symbol}.NS", period="5y", progress=False)
-            if new_data.empty: 
-                new_data = yf.download(f"{symbol}.BO", period="5y", progress=False)
+            if symbol.endswith('.BO') or symbol.endswith('.NS'):
+                new_data = yf.download(symbol, period="5y", progress=False)
+            else:
+                new_data = yf.download(f"{symbol}.NS", period="5y", progress=False)
+                if new_data.empty: 
+                    new_data = yf.download(f"{symbol}.BO", period="5y", progress=False)
             if new_data.empty:
                 continue
 
