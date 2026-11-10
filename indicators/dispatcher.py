@@ -96,6 +96,13 @@ def process_chart_data(filepath, full_name, tf='D', summary_only=False, active_i
             'bp_score': safe_float(current.get('bp_score')),
             'rvol': safe_float(current.get('rvol')),
             'ud_ratio': safe_float(current.get('ud_ratio')),
+            
+            'w_macd': safe_float(current.get('w_macd')),
+            'w_hist': safe_float(current.get('w_hist')),
+            'm_macd': safe_float(current.get('m_macd')),
+            'm_hist': safe_float(current.get('m_hist')),
+            'd_macd': safe_float(current.get('d_macd')),
+            'd_hist': safe_float(current.get('d_hist')),
         }
 
         # Handle specific UI state variables for the MTF Engine

@@ -229,9 +229,25 @@ def apply_mtf(df, cfg):
         if len(supply_zones) >= 2:
             break
             
+    # Calculate True MTF MACD & Histograms
+    w_raw['w_macd'] = w_raw['close'].ewm(span=12, adjust=False).mean() - w_raw['close'].ewm(span=26, adjust=False).mean()
+    w_raw['w_hist'] = w_raw['w_macd'] - w_raw['w_macd'].ewm(span=9, adjust=False).mean()
+    
+    m_df['m_macd'] = m_df['close'].ewm(span=12, adjust=False).mean() - m_df['close'].ewm(span=26, adjust=False).mean()
+    m_df['m_hist'] = m_df['m_macd'] - m_df['m_macd'].ewm(span=9, adjust=False).mean()
+
+    # Calculate Daily Baseline MACD
+    df['d_macd'] = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
+    df['d_hist'] = df['d_macd'] - df['d_macd'].ewm(span=9, adjust=False).mean()
+
     w_df = process_htf(w_raw).shift(1)
     m_df = process_htf(m_df).shift(1)
     
+    df['w_macd'] = df['year_week'].map(w_df['w_macd'])
+    df['w_hist'] = df['year_week'].map(w_df['w_hist'])
+    df['m_macd'] = df['year_month'].map(m_df['m_macd'])
+    df['m_hist'] = df['year_month'].map(m_df['m_hist'])
+
     df['w_high'] = df['year_week'].map(w_df['anchor_high'])
     df['w_sl'] = df['year_week'].map(w_df['anchor_sl'])
     df['w_active'] = df['year_week'].map(w_df['is_active']).fillna(False)
