@@ -85,8 +85,11 @@
         .nav-btn, .tf-btn { background: transparent; border: 1px solid var(--ui-border); color: var(--ui-text); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
         .tf-btn.active { background: #2962ff; color: white; border-color: #2962ff; }
         
-        #top-search { background: var(--ui-input-bg); border: 1px solid var(--ui-border); color: var(--ui-text); padding: 6px 10px; font-size: 13px; border-radius: 4px; width: 150px; outline: none; }
+        #top-search { width: 0px; padding: 0; border: none; opacity: 0; outline: none; transition: all 0.3s ease; background: var(--ui-input-bg); color: var(--ui-text); font-size: 13px; border-radius: 4px; }
+        #top-search.expanded { width: 120px; padding: 6px 10px; border: 1px solid var(--ui-border); opacity: 1; margin-left: 5px; }
         #top-search:focus { border-color: #2962ff; }
+        
+        .col-whist, .item-whist { flex: 0 0 35px; text-align: center; cursor: pointer; user-select: none; display: flex; justify-content: center; align-items: center; }
 
         /* Added touch-action: none to completely stop the browser from eating the swipe */
         #chart-container { flex: 1 1 0; min-height: 0; position: relative; display: flex; flex-direction: column; overflow: hidden; touch-action: none; }
@@ -283,10 +286,18 @@
         <div class="modal-row"><span>Min U/D Ratio</span><input type="number" id="f-min-ud" step="0.1" style="width:70px; background:var(--ui-input-bg); color:var(--ui-text); border:1px solid var(--ui-border);"></div>
         <div class="modal-row" style="display:block; margin-top:12px;">
             <div style="margin-bottom:8px; border-top:1px solid var(--ui-border); padding-top:8px;">Signal Tags</div>
-            <div style="display:flex; justify-content:space-between; font-size:11px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom: 8px;">
                 <label style="cursor:pointer;"><input type="checkbox" id="f-sig-bull"> 🟢 Buys/Adds</label>
                 <label style="cursor:pointer;"><input type="checkbox" id="f-sig-wait"> ⏳ Wait/Coil</label>
                 <label style="cursor:pointer;"><input type="checkbox" id="f-sig-trap"> 🔴 Traps/Fails</label>
+            </div>
+            <div style="margin-bottom:6px; font-weight:bold;">MACD Filters (> 0)</div>
+            <div style="display:flex; flex-wrap: wrap; gap: 8px; font-size:11px;">
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-whist"> W-Hist</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-wmacd"> W-MACD</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-mhist"> M-Hist</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-mmacd"> M-MACD</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="f-sig-dmacd"> D-MACD</label>
             </div>
         </div>
         <button class="modal-btn" onclick="applyFilters()">Apply Filters</button>
@@ -350,43 +361,50 @@
     <!-- Main Workspace -->
     <div id="main-workspace">
         <div id="top-bar">
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <div class="nav-grp">
-                    <input type="text" id="top-search" list="watchlist-stocks" placeholder="Search Watchlist..." onchange="searchAndAdd()" onkeypress="if(event.key==='Enter') searchAndAdd()">
+            <!-- Group 1: Search & Navigation -->
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="nav-grp" style="display: flex; align-items: center;">
+                    <button class="nav-btn" onclick="document.getElementById('top-search').classList.toggle('expanded'); document.getElementById('top-search').focus();" title="Search">🔍</button>
+                    <input type="text" id="top-search" list="watchlist-stocks" placeholder="Search..." onchange="searchAndAdd()" onkeypress="if(event.key==='Enter') searchAndAdd()">
                 </div>
                 
                 <div class="nav-grp">
                     <button class="nav-btn" onclick="cycleStock(-1)" title="Previous">◀</button>
-                    <span id="title-text" style="width: 95px; text-align: center; font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
+                    <span id="title-text" style="width: 85px; text-align: center; font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</span>
                     <button class="nav-btn" onclick="cycleStock(1)" title="Next">▶</button>
                 </div>
             </div>
             
+            <!-- Group 2: Timeframes & Tools -->
             <div class="nav-grp">
-                <button class="nav-btn" id="btn-replay" onclick="toggleReplay()" title="Replay Mode" style="font-size: 16px; font-weight: bold; color: #2962ff; border-color: transparent; transition: all 0.2s;">⏮</button>
-                <button class="nav-btn" id="btn-replay-play" onclick="togglePlayPause()" title="Play / Pause (Spacebar)" style="display: none; font-size: 14px; color: #089981; border-color: transparent;">▶</button>
-                <button class="nav-btn" id="btn-replay-step" onclick="stepReplayForward()" title="Step Forward 1 Day (Shift + →)" style="display: none; font-size: 14px; border-color: transparent;">⏭</button>
-                <button class="nav-btn" id="btn-replay-exit" onclick="exitReplayMode()" title="Exit Replay (Esc)" style="display: none; font-size: 14px; color: #f23645; border-color: transparent;">⏹</button>
-                <div style="width: 1px; height: 18px; background: var(--ui-border); margin: 0 2px;"></div>
-                
-                <button class="nav-btn" onclick="openZerodha()" title="Open in Zerodha (Alt + Z)" style="font-size: 14px;">⚡</button>
-                <button class="nav-btn" onclick="openScreener()" title="Open in Screener.in (Alt + S)" style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">Sc</button>
-                <button class="nav-btn" onclick="openTradingView()" title="Open in TradingView (Alt + V)" style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">TV</button>
-                
-                <div style="width: 1px; height: 18px; background: var(--ui-border); margin: 0 2px;"></div>
-                
                 <button class="tf-btn" id="btn-tf-15m" onclick="setTimeframe('15m')">15m</button>
                 <button class="tf-btn" id="btn-tf-75m" onclick="setTimeframe('75m')">75m</button>
                 <button class="tf-btn active" id="btn-tf-D" onclick="setTimeframe('D')">D</button>
                 <button class="tf-btn" id="btn-tf-W" onclick="setTimeframe('W')">W</button>
                 <button class="tf-btn" id="btn-tf-M" onclick="setTimeframe('M')">M</button>
+                <div style="width: 1px; height: 18px; background: var(--ui-border); margin: 0 4px;"></div>
+                <button class="nav-btn" onclick="openZerodha()" title="Open in Zerodha (Alt + Z)" style="font-size: 14px;">⚡</button>
+                <button class="nav-btn" onclick="openScreener()" title="Open in Screener.in (Alt + S)" style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">Sc</button>
+                <button class="nav-btn" onclick="openTradingView()" title="Open in TradingView (Alt + V)" style="font-weight: 800; font-size: 13px; letter-spacing: 0.5px;">TV</button>
+            </div>
+
+            <!-- Group 3: Links, Replay, Sync, WL -->
+            <div class="nav-grp">
+                <button class="nav-btn" id="btn-replay" onclick="toggleReplay()" title="Replay Mode" style="font-size: 16px; font-weight: bold; color: #2962ff; border-color: transparent; transition: all 0.2s;">⏮</button>
+                <button class="nav-btn" id="btn-replay-play" onclick="togglePlayPause()" title="Play / Pause (Spacebar)" style="display: none; font-size: 14px; color: #089981; border-color: transparent;">▶</button>
+                <button class="nav-btn" id="btn-replay-step" onclick="stepReplayForward()" title="Step Forward 1 Day (Shift + →)" style="display: none; font-size: 14px; border-color: transparent;">⏭</button>
+                <button class="nav-btn" id="btn-replay-exit" onclick="exitReplayMode()" title="Exit Replay (Esc)" style="display: none; font-size: 14px; color: #f23645; border-color: transparent;">⏹</button>
+                
                 <button class="nav-btn" onclick="openIndicators()" title="Indicators" style="font-family: Georgia, serif; font-weight: bold; font-style: italic;">ƒx</button>
                 <button class="nav-btn" onclick="openSettings()" title="Settings">⚙️</button>
                 <button class="nav-btn" onclick="toggleTheme()" title="Toggle Light/Dark Theme">🌓</button>
-                <button class="nav-btn" id="btn-sync" onclick="syncAllStocks()" title="Fetch EOD Data for ALL Stocks">🔄 Sync All</button>
+                <button class="nav-btn" id="btn-sync" onclick="syncAllStocks()" title="Fetch EOD Data for ALL Stocks">🔄 Sync</button>
                 <button class="nav-btn" onclick="toggleWl()" title="Toggle Watchlist">☰</button>
             </div>
         </div>
+        
+        <!-- Invisible Right-Edge Hitbox for Swiping open the Watchlist -->
+        <div id="wl-edge-hitbox" onclick="toggleWl()" style="position: absolute; right: 0; top: 35px; bottom: 30px; width: 12px; z-index: 15; cursor: pointer;" title="Tap to open Watchlist"></div>
         
         <div id="chart-container">
             <div id="title-wrapper" style="position: absolute; top: 8px; left: 15px; z-index: 20; display: flex; align-items: center; gap: 8px; pointer-events: auto;">
@@ -531,7 +549,7 @@
                 localStorage.setItem('tv-ui-theme', 'light');
             }
         }
-        let activeFilters = { minP: '', maxP: '', minC: '', minBp: '', minRvol: '', minUd: '', minMcap: '', maxMcap: '', sigBull: false, sigWait: false, sigTrap: false };
+        let activeFilters = { minP: '', maxP: '', minC: '', minBp: '', minRvol: '', minUd: '', sigBull: false, sigWait: false, sigTrap: false, whist: false, wmacd: false, mhist: false, mmacd: false, dmacd: false };
 
         function openScreenerModal() {
             document.getElementById('modal-overlay').style.display = 'block';
@@ -550,6 +568,12 @@
             activeFilters.sigWait = document.getElementById('f-sig-wait').checked;
             activeFilters.sigTrap = document.getElementById('f-sig-trap').checked;
             
+            activeFilters.whist = document.getElementById('f-sig-whist').checked;
+            activeFilters.wmacd = document.getElementById('f-sig-wmacd').checked;
+            activeFilters.mhist = document.getElementById('f-sig-mhist').checked;
+            activeFilters.mmacd = document.getElementById('f-sig-mmacd').checked;
+            activeFilters.dmacd = document.getElementById('f-sig-dmacd').checked;
+            
             document.getElementById('modal-overlay').style.display = 'none';
             document.getElementById('filter-modal').style.display = 'none';
             renderWl();
@@ -563,6 +587,10 @@
             document.getElementById('f-sig-bull').checked = false;
             document.getElementById('f-sig-wait').checked = false;
             document.getElementById('f-sig-trap').checked = false;
+            
+            document.getElementById('f-sig-whist').checked = false; document.getElementById('f-sig-wmacd').checked = false;
+            document.getElementById('f-sig-mhist').checked = false; document.getElementById('f-sig-mmacd').checked = false;
+            document.getElementById('f-sig-dmacd').checked = false;
             applyFilters();
         }
 
@@ -1070,6 +1098,9 @@
                                 w.chg = apiData[w.symbol].chg; w.cmp = apiData[w.symbol].cmp; 
                                 w.signal = apiData[w.symbol].signal; w.bp = apiData[w.symbol].bp;
                                 w.rvol = apiData[w.symbol].rvol; w.ud = apiData[w.symbol].ud;
+                                w.w_hist = apiData[w.symbol].w_hist; w.w_macd = apiData[w.symbol].w_macd;
+                                w.m_hist = apiData[w.symbol].m_hist; w.m_macd = apiData[w.symbol].m_macd;
+                                w.d_macd = apiData[w.symbol].d_macd; w.d_hist = apiData[w.symbol].d_hist;
                             } 
                         });
                         renderWl();
@@ -1091,6 +1122,9 @@
                             w.chg = apiData[w.symbol].chg; w.cmp = apiData[w.symbol].cmp; 
                             w.signal = apiData[w.symbol].signal; w.bp = apiData[w.symbol].bp;
                             w.rvol = apiData[w.symbol].rvol; w.ud = apiData[w.symbol].ud;
+                            w.w_hist = apiData[w.symbol].w_hist; w.w_macd = apiData[w.symbol].w_macd;
+                            w.m_hist = apiData[w.symbol].m_hist; w.m_macd = apiData[w.symbol].m_macd;
+                            w.d_macd = apiData[w.symbol].d_macd; w.d_hist = apiData[w.symbol].d_hist;
                         } 
                     });
                     renderWl();
@@ -1301,6 +1335,12 @@
                 if (activeFilters.minRvol !== '' && (item.rvol || 0) < parseFloat(activeFilters.minRvol)) return false;
                 if (activeFilters.minUd !== '' && (item.ud || 0) < parseFloat(activeFilters.minUd)) return false;
                 
+                if (activeFilters.whist && (item.w_hist === undefined || item.w_hist <= 0)) return false;
+                if (activeFilters.wmacd && (item.w_macd === undefined || item.w_macd <= 0)) return false;
+                if (activeFilters.mhist && (item.m_hist === undefined || item.m_hist <= 0)) return false;
+                if (activeFilters.mmacd && (item.m_macd === undefined || item.m_macd <= 0)) return false;
+                if (activeFilters.dmacd && (item.d_macd === undefined || item.d_macd <= 0)) return false;
+                
                 const hasSignalFilter = activeFilters.sigBull || activeFilters.sigWait || activeFilters.sigTrap;
                 
                 if (hasSignalFilter) {
@@ -1355,6 +1395,7 @@
             if (sortMode === 'bp') displayList.sort((a,b) => sortAsc ? (b.bp||0) - (a.bp||0) : (a.bp||0) - (b.bp||0));
             if (sortMode === 'rvol') displayList.sort((a,b) => sortAsc ? (b.rvol||0) - (a.rvol||0) : (a.rvol||0) - (b.rvol||0));
             if (sortMode === 'ud') displayList.sort((a,b) => sortAsc ? (b.ud||0) - (a.ud||0) : (a.ud||0) - (b.ud||0));
+            if (sortMode === 'whist') displayList.sort((a,b) => sortAsc ? (b.w_hist||0) - (a.w_hist||0) : (a.w_hist||0) - (b.w_hist||0));
 
             cont.innerHTML = `
                 <div class="wl-cols">
@@ -1362,6 +1403,7 @@
                     <div class="col-sym" onclick="setSort('sym')">Symbol ↕</div>
                     <div class="col-cmp" onclick="setSort('cmp')">CMP ↕</div>
                     <div class="col-chg" onclick="setSort('chg')">% Chg ↕</div>
+                    <div class="col-whist" onclick="setSort('whist')">W-H ↕</div>
                     <div class="col-tag" onclick="setSort('status')">Tag ↕</div>
                     <div class="col-bp" onclick="setSort('bp')">BP ↕</div>
                     <div class="col-rvol" onclick="setSort('rvol')">RVol ↕</div>
@@ -1382,6 +1424,9 @@
                 const displayRvol = isMtfActive && item.rvol !== undefined && item.rvol !== null ? item.rvol.toFixed(2) : '-';
                 const displayUd = isMtfActive && item.ud !== undefined && item.ud !== null ? item.ud.toFixed(2) : '-';
                 
+                const wHistVal = item.w_hist || 0;
+                const wHistColor = wHistVal > 0 ? '#089981' : '#f23645';
+                
                 const safeSym = item.symbol.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 
                 div.innerHTML = `
@@ -1389,6 +1434,7 @@
                     <div class="item-sym" onclick="loadSymbol('${safeSym}')">${item.symbol}</div>
                     <div class="item-cmp" onclick="loadSymbol('${safeSym}')">${item.cmp ? item.cmp.toFixed(2) : '0.00'}</div>
                     <div class="item-chg" onclick="loadSymbol('${safeSym}')" style="color: ${wlTextColor}">${chgVal >= 0 ? '+' : ''}${chgVal.toFixed(2)}%</div>
+                    <div class="item-whist" onclick="loadSymbol('${safeSym}')"><div style="width:8px; height:8px; border-radius:50%; background:${wHistColor}; margin:auto;"></div></div>
                     <div class="item-flags" onclick="loadSymbol('${safeSym}')"><div class="sig-badge" style="background: ${item.badgeCol};" onclick="setSort('status'); event.stopPropagation();">${item.badgeTxt}</div></div>
                     <div class="item-bp" onclick="loadSymbol('${safeSym}')">${displayBp}</div>
                     <div class="item-rvol" onclick="loadSymbol('${safeSym}')">${displayRvol}</div>
@@ -1458,6 +1504,7 @@
         const searchEl = document.getElementById('top-search');
         if (searchEl) {
             searchEl.addEventListener('blur', () => {
+                searchEl.classList.remove('expanded'); // Shuts the search box when you click away
                 window.scrollTo(0, 0);
                 document.body.scrollTop = 0;
                 setTimeout(() => {

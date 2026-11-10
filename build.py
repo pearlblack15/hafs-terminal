@@ -91,7 +91,13 @@ def build_static_api():
                             'signal': chart_data[-1].get('dash_signal', '-'),
                             'bp': chart_data[-1].get('bp_score', None),
                             'rvol': chart_data[-1].get('rvol', None),
-                            'ud': chart_data[-1].get('ud_ratio', None)
+                            'ud': chart_data[-1].get('ud_ratio', None),
+                            'w_macd': chart_data[-1].get('w_macd', None),
+                            'w_hist': chart_data[-1].get('w_hist', None),
+                            'm_macd': chart_data[-1].get('m_macd', None),
+                            'm_hist': chart_data[-1].get('m_hist', None),
+                            'd_macd': chart_data[-1].get('d_macd', None),
+                            'd_hist': chart_data[-1].get('d_hist', None)
                         }
         except Exception as e:
             print(f"❌ Failed to process {symbol}: {e}")
