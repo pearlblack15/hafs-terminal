@@ -1,69 +1,55 @@
 import pandas as pd
-import numpy as np
+import os
 
-def get_base_dataframe(filepath, tf='D'):
+def load_csv(filepath):
+    """
+    Loads and standardizes historical CSV data for the math engines.
+    """
+    if not os.path.exists(filepath):
+        return pd.DataFrame()
+        
     try:
-        # STRICT PARSING to prevent server crashes on dirty CSV files
         df = pd.read_csv(filepath)
-        df.columns = [str(c).lower().strip() for c in df.columns] 
-        date_col = 'time' if 'time' in df.columns else 'date'
         
-        if date_col not in df.columns: 
-            return None
+        # 1. Standardize column names
+        df.columns = [str(c).lower().strip() for c in df.columns]
+        
+        if 'date' in df.columns:
+            df.rename(columns={'date': 'time'}, inplace=True)
+        elif 'datetime' in df.columns:
+            df.rename(columns={'datetime': 'time'}, inplace=True)
             
-        df.rename(columns={date_col: 'time'}, inplace=True)
-        
+        # 2. Standardize core price columns
         for col in ['open', 'high', 'low', 'close']:
-            if col in df.columns: 
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-            else: 
-                return None
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
                 
-            if 'volume' in df.columns:
-        df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
-    else:
-        df['volume'] = 0.0
-
-    # Protect against older CSVs that don't have delivery data yet
-    for col in ['deliv_vol', 'deliv_pct']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+        # 3. Handle Volume (The exact source of the error)
+        if 'volume' in df.columns:
+            df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
         else:
-            df[col] = 0.0
+            df['volume'] = 0.0
 
-    df['time'] = pd.to_datetime(df['time'], errors='coerce')
-    
-        df.dropna(subset=['time', 'close', 'high', 'low', 'open'], inplace=True)
-        
-        # --- FILTER OUT YAHOO'S DUMMY HOLIDAY CANDLES ---
-        df = df[~((df['volume'] == 0) & (df['high'] == df['low']))]
-        
-        if df.empty: 
-            return None
+        # 4. Handle NSE Delivery Data
+        for col in ['deliv_vol', 'deliv_pct']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+            else:
+                df[col] = 0.0
 
-        # --- SAFELY STRIP TIMEZONES ---
-        if df['time'].dt.tz is not None: 
-            df['time'] = df['time'].dt.tz_convert(None)
-            
-        df.drop_duplicates(subset=['time'], keep='last', inplace=True)
-        df.sort_values('time', inplace=True)
-        
-        if len(df) < 2: 
-            return None
-
-        # --- TIMEFRAME RESAMPLING (Weekly & Monthly) ---
-        if tf == 'W':
-            df['grp'] = df['time'].dt.strftime('%G-%V')
-            df = df.groupby('grp').agg({'time':'first', 'open':'first', 'high':'max', 'low':'min', 'close':'last', 'volume':'sum'}).dropna()
-            df.sort_values('time', inplace=True)
-        elif tf == 'M':
-            df['grp'] = df['time'].dt.strftime('%Y-%m')
-            df = df.groupby('grp').agg({'time':'first', 'open':'first', 'high':'max', 'low':'min', 'close':'last', 'volume':'sum'}).dropna()
+        # 5. Handle Time formatting and sorting
+        if 'time' in df.columns:
+            df['time'] = pd.to_datetime(df['time'], errors='coerce')
+            df.dropna(subset=['time'], inplace=True)
             df.sort_values('time', inplace=True)
             
-        df.set_index('time', inplace=True, drop=False)
+        df.reset_index(drop=True, inplace=True)
         return df
 
     except Exception as e:
-        print(f"Error loading {filepath}: {e}")
-        return None
+        print(f"❌ Error in loader.py for {filepath}: {e}")
+        return pd.DataFrame()
+
+# Fallback alias in case your dispatcher calls it load_data instead of load_csv
+def load_data(filepath):
+    return load_csv(filepath)
