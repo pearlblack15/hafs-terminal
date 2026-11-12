@@ -37,6 +37,7 @@ def build_static_api():
     default_cfg = {'rsi_len': 14, 'macd_f': 10, 'macd_s': 26, 'macd_sig': 9, 'vol_ma': 50}
 
     # 3. Process each stock
+        # 3. Process each stock
     for symbol in COMPANY_NAMES.keys():
         print(f"Crunching {symbol}...")
         try:
@@ -61,7 +62,7 @@ def build_static_api():
                     new_data.rename(columns={col: 'Date'}, inplace=True)
                     break
             
-                       new_data.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
+            new_data.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
             if new_data['Date'].dt.tz is not None:
                 new_data['Date'] = new_data['Date'].dt.tz_localize(None)
 
@@ -81,7 +82,6 @@ def build_static_api():
 
             filepath = f'temp_historical_data/{symbol}.csv'
             new_data.to_csv(filepath, index=False)
-
 
             # Run the MTF Core Math for Daily, Weekly, and Monthly
             full_name = COMPANY_NAMES.get(symbol, symbol)
@@ -118,6 +118,7 @@ def build_static_api():
             print(f"❌ Failed to process {symbol}: {e}")
             
         time.sleep(1.5) # Prevent Yahoo rate limits
+ # Prevent Yahoo rate limits
 
     # 4. Save Watchlist Summary
     with open('public/api/watchlist_summary.json', 'w') as f:
