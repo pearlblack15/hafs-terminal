@@ -1,4 +1,4 @@
 pandas
 numpy
 yfinance
-jugaad-data==0.2.1
+jugaad-data
