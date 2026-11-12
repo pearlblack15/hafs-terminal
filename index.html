@@ -314,7 +314,9 @@
         <div class="modal-row"><span>RSI (14)</span><input type="checkbox" id="ind-rsi"></div>
         <div class="modal-row"><span>Simple Volume Overlay</span><input type="checkbox" id="ind-vol-simple"></div>
         <div class="modal-row"><span>Custom Volume Overlay</span><input type="checkbox" id="ind-vol-custom"></div>
-        <div class="modal-row"><span>Custom Volume Pane</span><input type="checkbox" id="ind-vol-custom-pane"></div>
+                <div class="modal-row"><span>Custom Volume Pane</span><input type="checkbox" id="ind-vol-custom-pane"></div>
+        <div class="modal-row"><span>Institutional Delivery Strength</span><input type="checkbox" id="ind-delivery"></div>
+
         
         <hr style="border-color: var(--ui-border); margin: 15px 0;">
         <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--ui-text);">Indicator Settings</h4>
@@ -797,7 +799,8 @@
             document.getElementById('ind-rsi').checked = activeIndicators.includes('rsi');
             document.getElementById('ind-vol-simple').checked = activeIndicators.includes('vol_simple');
             document.getElementById('ind-vol-custom').checked = activeIndicators.includes('vol_custom');
-            document.getElementById('ind-vol-custom-pane').checked = activeIndicators.includes('vol_custom_pane');
+                        document.getElementById('ind-vol-custom-pane').checked = activeIndicators.includes('vol_custom_pane');
+            document.getElementById('ind-delivery').checked = activeIndicators.includes('delivery');
             
             document.getElementById('cfg-rsi-len').value = indCfg.rsi_len;
             document.getElementById('cfg-rsi-col').value = indCfg.rsi_col;
@@ -823,7 +826,8 @@
             if(document.getElementById('ind-rsi').checked) activeIndicators.push('rsi');
             if(document.getElementById('ind-vol-simple').checked) activeIndicators.push('vol_simple');
             if(document.getElementById('ind-vol-custom').checked) activeIndicators.push('vol_custom');
-            if(document.getElementById('ind-vol-custom-pane').checked) activeIndicators.push('vol_custom_pane');
+                        if(document.getElementById('ind-vol-custom-pane').checked) activeIndicators.push('vol_custom_pane');
+            if(document.getElementById('ind-delivery').checked) activeIndicators.push('delivery');
             
             indCfg = {
                 rsi_len: parseInt(document.getElementById('cfg-rsi-len').value),
@@ -2251,6 +2255,8 @@
         let metricsMap = new Map();
         let rsi14Map = new Map();
         let macdMap = new Map();
+        let deliveryMap = new Map();
+
 
         function updateAllLegends(time) {
             let t = time;
@@ -2285,8 +2291,15 @@
                 document.getElementById('leg-rsi14').innerText = (rsi14 !== undefined && rsi14 !== null) ? rsi14.toFixed(2) : "-";
             }
             
+                       const deliv = deliveryMap.get(t);
+            if (document.getElementById('leg-deliv-pct')) {
+                document.getElementById('leg-deliv-pct').innerText = (deliv && deliv.pct !== null && deliv.pct !== undefined) ? deliv.pct.toFixed(2) : "-";
+                document.getElementById('leg-deliv-vol').innerText = (deliv && deliv.vol !== null && deliv.vol !== undefined) ? numFormat.format(deliv.vol) : "-";
+            }
+
             const macd = macdMap.get(t);
             if (document.getElementById('leg-macd')) {
+
                 document.getElementById('leg-macd').innerText = (macd && macd.macd !== null) ? macd.macd.toFixed(2) : "-";
                 document.getElementById('leg-macdsig').innerText = (macd && macd.sig !== null) ? macd.sig.toFixed(2) : "-";
                 const histEl = document.getElementById('leg-macdhist');
@@ -2865,11 +2878,13 @@
             let active_D = null, active_W = null, active_M = null;
             let lastRow = dataToRender[dataToRender.length - 1];
 
-            const rsiData = [], volData = [], volMarkers = []; 
+                       const rsiData = [], volData = [], volMarkers = []; 
             const simpleVolData = [], customVolMainData = [], rsi14Data = [], macdData = [], macdSigData = [], macdHistData = [];
+            const delivPctData = [], delivVolData = [];
             const e12 = [], e26 = [];
             
-            rsiMap.clear(); candleMap.clear(); metricsMap.clear(); rsi14Map.clear(); macdMap.clear(); volumeMap.clear();
+            rsiMap.clear(); candleMap.clear(); metricsMap.clear(); rsi14Map.clear(); macdMap.clear(); volumeMap.clear(); deliveryMap.clear();
+
             
             let prevClose = null;
             let prevMacdHist = 0;
@@ -2902,10 +2917,21 @@
             }
             
             if (d.scaled_vol !== undefined && d.scaled_vol !== null) volData.push({ time, value: d.scaled_vol, color: d.vol_color || '#3C3C3C' });
-            if (d.volume !== undefined) {
+                        if (d.volume !== undefined) {
                 simpleVolData.push({ time, value: d.volume, color: isBull ? '#089981' : '#f23645' });
                 customVolMainData.push({ time, value: d.volume, color: d.vol_color || '#3C3C3C' });
             }
+            
+            if (d.deliv_pct !== undefined && d.deliv_pct !== null) {
+                delivPctData.push({ time, value: d.deliv_pct });
+            } else { delivPctData.push({ time }); }
+            
+            if (d.deliv_vol !== undefined && d.deliv_vol !== null) {
+                delivVolData.push({ time, value: d.deliv_vol, color: isBull ? 'rgba(8, 153, 129, 0.6)' : 'rgba(242, 54, 69, 0.6)' });
+            } else { delivVolData.push({ time }); }
+            
+            deliveryMap.set(time, { pct: d.deliv_pct, vol: d.deliv_vol });
+
             
             if (d.ema_12 !== undefined && d.ema_12 !== null) e12.push({ time, value: d.ema_12 });
             if (d.ema_26 !== undefined && d.ema_26 !== null) e26.push({ time, value: d.ema_26 });
@@ -3153,8 +3179,35 @@
                 pane.series.sig.setData(macdSigData);
             } else { destroyPane('macd'); }
             
+                        if (activeIndicators.includes('delivery')) {
+                const pane = createPane('delivery', 'Deliv %: <span id="leg-deliv-pct" style="color: #ffb300; font-weight: bold;">-</span>% &nbsp;|&nbsp; Deliv Vol: <span id="leg-deliv-vol">-</span>');
+                if (!pane.series.vol) {
+                    pane.series.vol = pane.chart.addHistogramSeries({ 
+                        base: 0, priceFormat: { type: 'volume' }, priceScaleId: '', priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+                        autoscaleInfoProvider: (original) => {
+                            const res = original();
+                            if (res !== null) { res.priceRange.minValue = 0; }
+                            return res;
+                        }
+                    });
+                    pane.chart.priceScale('').applyOptions({ scaleMargins: { top: 0.1, bottom: 0 } });
+                    
+                    pane.series.pct = pane.chart.addLineSeries({ 
+                        color: '#ffb300', lineWidth: 2, priceLineVisible: false, priceScaleId: 'right',
+                        autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } })
+                    });
+                    pane.series.pct.createPriceLine({ price: 75, color: '#f23645', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+                    pane.series.pct.createPriceLine({ price: 50, color: '#787b86', lineWidth: 1, lineStyle: 2, axisLabelVisible: false });
+                    pane.syncSeries = pane.series.pct;
+                }
+                pane.chart.priceScale('right').applyOptions({ autoScale: true });
+                pane.series.vol.setData(delivVolData);
+                pane.series.pct.setData(delivPctData);
+            } else { destroyPane('delivery'); }
+
             if (activeIndicators.includes('vol_custom_pane')) {
                 const pane = createPane('vol_custom_pane', 'Custom Vol: <span id="leg-sub-vol-pane">-</span>');
+
                 if (!pane.series.vol) {
                     pane.series.vol = pane.chart.addHistogramSeries({ 
                         base: 0, priceFormat: { type: 'volume' }, priceScaleId: 'right', priceLineVisible: false, lastValueVisible: true, crosshairMarkerVisible: true,
