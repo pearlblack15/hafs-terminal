@@ -103,7 +103,11 @@ def process_chart_data(filepath, full_name, tf='D', summary_only=False, active_i
             'm_hist': safe_float(current.get('m_hist')),
             'd_macd': safe_float(current.get('d_macd')),
             'd_hist': safe_float(current.get('d_hist')),
+            
+            'deliv_vol': safe_float(current.get('deliv_vol')),
+            'deliv_pct': safe_float(current.get('deliv_pct')),
         }
+
 
         # Handle specific UI state variables for the MTF Engine
         if 'mtf_core' in active_inds:

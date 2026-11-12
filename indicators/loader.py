@@ -19,12 +19,20 @@ def get_base_dataframe(filepath, tf='D'):
             else: 
                 return None
                 
-        if 'volume' in df.columns: 
+                if 'volume' in df.columns: 
             df['volume'] = pd.to_numeric(df['volume'], errors='coerce').fillna(0.0)
         else: 
             df['volume'] = 0.0
 
+        # Protect against older CSVs that don't have delivery data yet
+        for col in ['deliv_vol', 'deliv_pct']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+            else:
+                df[col] = 0.0
+
         df['time'] = pd.to_datetime(df['time'], errors='coerce')
+
         df.dropna(subset=['time', 'close', 'high', 'low', 'open'], inplace=True)
         
         # --- FILTER OUT YAHOO'S DUMMY HOLIDAY CANDLES ---
