@@ -37,7 +37,6 @@ def build_static_api():
     default_cfg = {'rsi_len': 14, 'macd_f': 10, 'macd_s': 26, 'macd_sig': 9, 'vol_ma': 50}
 
     # 3. Process each stock
-        # 3. Process each stock
     for symbol in COMPANY_NAMES.keys():
         print(f"Crunching {symbol}...")
         try:
@@ -65,20 +64,6 @@ def build_static_api():
             new_data.rename(columns={'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'}, inplace=True)
             if new_data['Date'].dt.tz is not None:
                 new_data['Date'] = new_data['Date'].dt.tz_localize(None)
-
-            # --- FETCH & MERGE NSE DELIVERY DATA ---
-            try:
-                from nse_fetcher import get_nse_delivery
-                deliv_df = get_nse_delivery(symbol, years=5)
-                if deliv_df is not None:
-                    new_data = pd.merge(new_data, deliv_df, on='Date', how='left')
-                else:
-                    new_data['deliv_vol'] = 0.0
-                    new_data['deliv_pct'] = 0.0
-            except Exception as e:
-                new_data['deliv_vol'] = 0.0
-                new_data['deliv_pct'] = 0.0
-            # ---------------------------------------
 
             filepath = f'temp_historical_data/{symbol}.csv'
             new_data.to_csv(filepath, index=False)
@@ -117,8 +102,7 @@ def build_static_api():
         except Exception as e:
             print(f"❌ Failed to process {symbol}: {e}")
             
-        time.sleep(1.5) # Prevent Yahoo rate limits
- # Prevent Yahoo rate limits
+        time.sleep(0.2) # Prevent Yahoo rate limits
 
     # 4. Save Watchlist Summary
     with open('public/api/watchlist_summary.json', 'w') as f:
