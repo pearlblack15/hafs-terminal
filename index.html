@@ -842,6 +842,7 @@
             closeSettings();
             
             if (currentSymbol) loadSymbol(currentSymbol);
+            if (isLocal) fetchWlData();
         }
 
         function closeIndicatorPane(indicatorId) {
@@ -1089,7 +1090,7 @@
                     const req = fetch('/api/watchlist', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ symbols: chunk, inds: activeIndicators })
+                        body: JSON.stringify({ symbols: chunk, inds: activeIndicators, cfg: indCfg })
                     })
                     .then(res => res.json())
                     .then(apiData => {
