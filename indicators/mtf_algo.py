@@ -229,24 +229,32 @@ def apply_mtf(df, cfg):
         if len(supply_zones) >= 2:
             break
             
-    # Calculate True MTF MACD & Histograms
-    w_raw['w_macd'] = w_raw['close'].ewm(span=12, adjust=False).mean() - w_raw['close'].ewm(span=26, adjust=False).mean()
-    w_raw['w_hist'] = w_raw['w_macd'] - w_raw['w_macd'].ewm(span=9, adjust=False).mean()
-    
-    m_df['m_macd'] = m_df['close'].ewm(span=12, adjust=False).mean() - m_df['close'].ewm(span=26, adjust=False).mean()
-    m_df['m_hist'] = m_df['m_macd'] - m_df['m_macd'].ewm(span=9, adjust=False).mean()
+    # Uses UI settings on PC; defaults to 10, 26, 9 (and matches build.py on GitHub)
+    cfg = cfg or {}
+    macd_f = int(cfg.get('macd_f', 10))
+    macd_s = int(cfg.get('macd_s', 26))
+    macd_sig = int(cfg.get('macd_sig', 9))
 
-    # Calculate Daily Baseline MACD
-    df['d_macd'] = df['close'].ewm(span=12, adjust=False).mean() - df['close'].ewm(span=26, adjust=False).mean()
-    df['d_hist'] = df['d_macd'] - df['d_macd'].ewm(span=9, adjust=False).mean()
-
-    w_df = process_htf(w_raw).shift(1)
-    m_df = process_htf(m_df).shift(1)
+    # 1. Calculate LIVE MTF MACD on unshifted raw data
+    w_raw['w_macd'] = w_raw['close'].ewm(span=macd_f, adjust=False).mean() - w_raw['close'].ewm(span=macd_s, adjust=False).mean()
+    w_raw['w_hist'] = w_raw['w_macd'] - w_raw['w_macd'].ewm(span=macd_sig, adjust=False).mean()
     
-    df['w_macd'] = df['year_week'].map(w_df['w_macd'])
-    df['w_hist'] = df['year_week'].map(w_df['w_hist'])
+    m_df['m_macd'] = m_df['close'].ewm(span=macd_f, adjust=False).mean() - m_df['close'].ewm(span=macd_s, adjust=False).mean()
+    m_df['m_hist'] = m_df['m_macd'] - m_df['m_macd'].ewm(span=macd_sig, adjust=False).mean()
+
+    # 2. Map LIVE (unshifted) MACD values to Daily dataframe for the Watchlist
+    df['w_macd'] = df['year_week'].map(w_raw['w_macd'])
+    df['w_hist'] = df['year_week'].map(w_raw['w_hist'])
     df['m_macd'] = df['year_month'].map(m_df['m_macd'])
     df['m_hist'] = df['year_month'].map(m_df['m_hist'])
+
+    # 3. Calculate Daily Baseline MACD
+    df['d_macd'] = df['close'].ewm(span=macd_f, adjust=False).mean() - df['close'].ewm(span=macd_s, adjust=False).mean()
+    df['d_hist'] = df['d_macd'] - df['d_macd'].ewm(span=macd_sig, adjust=False).mean()
+
+    # 4. Process & shift HTF data for non-repainting price levels
+    w_df = process_htf(w_raw).shift(1)
+    m_df = process_htf(m_df).shift(1)
 
     df['w_high'] = df['year_week'].map(w_df['anchor_high'])
     df['w_sl'] = df['year_week'].map(w_df['anchor_sl'])
