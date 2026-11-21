@@ -142,8 +142,8 @@
         #watchlist { width: 260px; background-color: var(--ui-bg-panel); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
         .wl-header { padding: 10px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--ui-border); }
         .wl-list-mgr { display: flex; justify-content: space-between; align-items: center; }
-        #list-selector { flex-grow: 1; background: var(--ui-input-bg); color: var(--ui-text); border: 1px solid var(--ui-border); padding: 4px; border-radius: 3px; font-size: 12px; outline: none; margin-right: 5px; cursor: pointer;}
-        .wl-btn { background: var(--ui-border); border: none; color: var(--ui-text); padding: 4px 8px; cursor: pointer; border-radius: 3px; }
+        #list-selector { flex-grow: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; background: var(--ui-input-bg); color: var(--ui-text); border: 1px solid var(--ui-border); padding: 4px; border-radius: 3px; font-size: 12px; outline: none; margin-right: 5px; cursor: pointer;}
+        .wl-btn { background: var(--ui-border); border: none; color: var(--ui-text); padding: 4px 8px; cursor: pointer; border-radius: 3px; flex-shrink: 0; }
         .wl-btn:hover { background: var(--ui-hover); }
         
         #wl-list { flex-grow: 1; overflow: auto; position: relative; }
